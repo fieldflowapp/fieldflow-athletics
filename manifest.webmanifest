@@ -1,0 +1,32 @@
+{
+  "name": "FieldFlow Athletics",
+  "short_name": "FF Athletics",
+  "description": "FieldFlow Athletics Admin",
+  "start_url": "/fieldflow-athletics/",
+  "scope": "/fieldflow-athletics/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#000000",
+  "theme_color": "#071d2d",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    }
+  ],
+  "id": "/fieldflow-athletics/"
+}
