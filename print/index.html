@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FieldFlow Athletics · Event Print</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--ink:#17232b;--muted:#66727a;--line:#d7dde1;--navy:#071d2d}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#eef2f4}
+.bar{max-width:1100px;margin:14px auto;display:flex;gap:10px;align-items:center;padding:0 14px}
+.bar select,.bar button{padding:10px 12px;border:1px solid #b9c3c9;border-radius:8px;background:white;font:inherit}
+.bar button{background:var(--navy);color:white;font-weight:700;cursor:pointer}
+.bar .spacer{flex:1}
+.sheet{width:210mm;min-height:297mm;margin:10px auto 30px;background:white;padding:12mm;box-shadow:0 8px 30px #0002}
+.head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:8px}
+h1{font-size:22px;margin:0}.meta{font-size:12px;color:var(--muted);margin-top:4px}.record{font-size:12px;text-align:right}
+h2{font-size:14px;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.05em}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{border:1px solid var(--line);padding:5px 6px;text-align:left}
+th{background:#f2f5f7;font-size:10px;text-transform:uppercase}
+.center{text-align:center}.right{text-align:right}.strong{font-weight:700}
+.heat{break-inside:avoid;margin-bottom:12px}
+.finalbox{border:2px solid var(--navy);padding:8px;margin-top:8px;break-inside:avoid}
+.empty{color:var(--muted);font-size:12px;padding:8px 0}
+.footer{margin-top:18px;padding-top:7px;border-top:1px solid var(--line);font-size:9px;color:var(--muted);display:flex;justify-content:space-between}
+.login{max-width:380px;margin:15vh auto;background:white;padding:22px;border-radius:12px;box-shadow:0 8px 30px #0002}
+.login input{width:100%;padding:10px;margin:6px 0;border:1px solid #ccd4d9;border-radius:8px}.login button{width:100%;padding:10px;background:var(--navy);color:white;border:0;border-radius:8px;font-weight:700}
+.hidden{display:none!important}
+@page{size:A4 portrait;margin:8mm}
+@media print{
+ body{background:white}.bar,.login{display:none!important}.sheet{box-shadow:none;margin:0;width:auto;min-height:auto;padding:0}
+ h2{margin-top:12px}.footer{position:relative}
+}
+@media(max-width:900px){.sheet{width:100%;min-height:0;margin:0;padding:14px;box-shadow:none}.bar{margin:8px auto}.head{flex-direction:column}.record{text-align:left}}
+</style>
+
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FieldFlow Athletics">
+</head>
+<body>
+<div id="login" class="login hidden">
+  <h2 style="margin-top:0">Admin sign in</h2>
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+  <button id="signIn">Sign in</button>
+  <div id="loginMsg" class="meta" style="margin-top:8px"></div>
+</div>
+<div id="main" class="hidden">
+  <div class="bar">
+    <select id="eventSelect"></select>
+    <button id="loadBtn">Load</button>
+    <div class="spacer"></div>
+    <button onclick="window.print()">Print / Save PDF</button>
+  </div>
+  <main class="sheet" id="sheet"></main>
+</div>
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_ID='204a8f52-5525-4077-85e4-1d3811d68323';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const gender=g=>g==='F'?'Girls':'Boys';
+const fmtTime=v=>v==null?'—':Number(v).toFixed(2)+' s';
+function perf(v,u){if(v==null)return '—';return u==='s'?fmtTime(v):Number(v).toFixed(2)+' '+(u||'');}
+function eventTitle(e){return e.category+' · '+gender(e.gender)+' · '+e.name;}
+async function init(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){$('login').classList.remove('hidden');return}
+  $('main').classList.remove('hidden');
+  const {data:events,error}=await sb.from('athletics_events').select('*').eq('tournament_id',TOURNAMENT_ID).eq('discipline','track').order('category').order('gender').order('sort_order');
+  if(error){$('sheet').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
+  $('eventSelect').innerHTML=(events||[]).map(e=>'<option value="'+e.id+'">'+esc(eventTitle(e))+'</option>').join('');
+  const q=new URLSearchParams(location.search).get('event');
+  if(q && (events||[]).some(e=>e.id===q)) $('eventSelect').value=q;
+  $('loadBtn').onclick=()=>{history.replaceState(null,'','?event='+encodeURIComponent($('eventSelect').value));loadEvent($('eventSelect').value)};
+  if($('eventSelect').value) loadEvent($('eventSelect').value);
+}
+async function loadEvent(eventId){
+  $('sheet').innerHTML='<div class="empty">Loading event…</div>';
+  const [{data:event,error:eErr},{data:heats,error:hErr},{data:regs,error:rErr},{data:entries,error:enErr},{data:ledger,error:lErr}]=await Promise.all([
+    sb.from('athletics_events').select('*').eq('id',eventId).single(),
+    sb.from('athletics_track_heats').select('*').eq('event_id',eventId).order('stage').order('heat_number'),
+    sb.from('athletics_registrations').select('*').eq('event_id',eventId),
+    sb.from('athletics_track_entries').select('*').eq('tournament_id',TOURNAMENT_ID),
+    sb.from('athletics_points_ledger').select('*').eq('event_id',eventId).order('place')
+  ]);
+  const err=eErr||hErr||rErr||enErr||lErr;if(err){$('sheet').innerHTML='<div class="empty">'+esc(err.message)+'</div>';return}
+  const athleteIds=[...new Set((regs||[]).map(r=>r.athlete_id))];
+  let athletes=[];
+  if(athleteIds.length){
+    const {data,error}=await sb.from('athletics_athletes').select('*').in('id',athleteIds);
+    if(error){$('sheet').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
+    athletes=data||[];
+  }
+  const aBy=new Map(athletes.map(a=>[a.id,a]));
+  const rBy=new Map((regs||[]).map(r=>[r.id,r]));
+  const heatIds=new Set((heats||[]).map(h=>h.id));
+  const evEntries=(entries||[]).filter(x=>heatIds.has(x.heat_id));
+  const entryRows=(heatId)=>evEntries.filter(x=>x.heat_id===heatId).sort((a,b)=>(a.lane??999)-(b.lane??999));
+  const athleteForEntry=(en)=>{const r=rBy.get(en.registration_id);return r?aBy.get(r.athlete_id):null};
+  const record=event.record_value?('<b>Record:</b> '+esc(event.record_value)+(event.record_year?' · '+esc(event.record_year):'')):'<b>Record:</b> —';
+  let out='<header class="head"><div><h1>FieldFlow Athletics</h1><div class="meta">'+esc(eventTitle(event))+'</div></div><div class="record">'+record+'</div></header>';
+  out+='<h2>Event summary</h2><table><tbody><tr><th>Category</th><td>'+esc(event.category)+'</td><th>Gender</th><td>'+esc(gender(event.gender))+'</td></tr><tr><th>Event</th><td>'+esc(event.name)+'</td><th>Code</th><td>'+esc(event.code)+'</td></tr><tr><th>Registered</th><td>'+esc((regs||[]).filter(r=>r.status==='registered').length)+'</td><th>Finalists</th><td>'+esc(event.has_final?(event.finalists_count||8):'No final')+'</td></tr></tbody></table>';
+
+  const heatList=(heats||[]).filter(h=>h.stage==='heat');
+  out+='<h2>Heats</h2>';
+  if(!heatList.length) out+='<div class="empty">No heats generated.</div>';
+  heatList.forEach(h=>{
+    const rows=entryRows(h.id);
+    out+='<section class="heat"><div class="strong" style="margin-bottom:5px">Heat '+esc(h.heat_number)+' · '+esc(h.status)+'</div><table><thead><tr><th class="center">Lane</th><th>Athlete</th><th>Colour</th><th>Status</th><th class="right">Time</th></tr></thead><tbody>';
+    rows.forEach(en=>{const a=athleteForEntry(en)||{};out+='<tr><td class="center">'+esc(en.lane??'—')+'</td><td>'+esc((a.last_name||'')+', '+(a.first_name||''))+'</td><td>'+esc(a.color||'')+'</td><td>'+esc(en.status||'')+'</td><td class="right">'+esc(fmtTime(en.official_time))+'</td></tr>'});
+    out+='</tbody></table></section>';
+  });
+
+  const finalHeat=(heats||[]).find(h=>h.stage==='final');
+  out+='<h2>Final</h2><div class="finalbox">';
+  if(!finalHeat){out+='<div class="empty">Final not created yet.</div>'}
+  else{
+    const rows=entryRows(finalHeat.id);
+    out+='<table><thead><tr><th class="center">Lane</th><th>Athlete</th><th>Colour</th><th>Status</th><th class="right">Final time</th></tr></thead><tbody>';
+    rows.forEach(en=>{const a=athleteForEntry(en)||{};out+='<tr><td class="center">'+esc(en.lane??'—')+'</td><td>'+esc((a.last_name||'')+', '+(a.first_name||''))+'</td><td>'+esc(a.color||'')+'</td><td>'+esc(en.status||'')+'</td><td class="right">'+esc(fmtTime(en.official_time))+'</td></tr>'});
+    out+='</tbody></table>';
+  }
+  out+='</div>';
+
+  out+='<h2>Official places & points</h2>';
+  if(!(ledger||[]).length) out+='<div class="empty">No official ranking available yet.</div>';
+  else{
+    out+='<table><thead><tr><th class="center">Place</th><th>Athlete</th><th>Colour</th><th class="right">Performance</th><th class="center">Points</th></tr></thead><tbody>';
+    (ledger||[]).forEach(x=>{out+='<tr><td class="center strong">'+esc(x.place)+'</td><td>'+esc(x.last_name+', '+x.first_name)+'</td><td>'+esc(x.color)+'</td><td class="right">'+esc(perf(x.performance_numeric,x.performance_unit))+'</td><td class="center strong">'+esc(Number(x.points))+'</td></tr>'});
+    out+='</tbody></table>';
+  }
+  out+='<div class="footer"><span>FieldFlow Athletics</span><span>Printed '+esc(new Date().toLocaleString())+'</span></div>';
+  $('sheet').innerHTML=out;
+}
+$('signIn').onclick=async()=>{
+  $('loginMsg').textContent='Signing in…';
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){$('loginMsg').textContent=error.message;return}
+  $('login').classList.add('hidden');$('main').classList.remove('hidden');init();
+};
+init();
+</script>
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js').catch(console.error));}
+</script>
+</body>
+</html>
