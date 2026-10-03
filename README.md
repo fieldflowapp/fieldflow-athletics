@@ -13,3 +13,5 @@ Independent FieldFlow Athletics admin PWA.
 This repository is intentionally independent from other FieldFlow sports apps. Each sport should live in its own repository and PWA scope.
 
 Public results/schedule/bases will be added later as a separate public-facing surface.
+
+Deployment status: GitHub Pages enabled.
