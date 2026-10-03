@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <meta name="theme-color" content="#071d2d"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  <title>FieldFlow Athletics · Field Admin</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--navy:#071d2d;--navy2:#061722;--blue:#0b5fff;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--ink:#eaf3f8;--muted:#91a7b4;--line:#17384b;--card:#0b2638}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,var(--navy2),#04121b 55%);color:var(--ink);min-height:100vh}
+    button,input,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+    .shell{max-width:1600px;margin:auto;padding:16px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+    .brand{display:flex;align-items:center;gap:12px}.mark{width:46px;height:46px;overflow:hidden;padding:0;border-radius:13px;background:linear-gradient(145deg,var(--blue),var(--cyan));display:grid;place-items:center;font-weight:900;color:#00111b}
+    .mark img{width:100%;height:100%;object-fit:cover;display:block}h1{font-size:20px;margin:0}.sub{font-size:13px;color:var(--muted)}.pill{border:1px solid var(--line);background:#082232;border-radius:999px;padding:7px 10px;color:#b9ccd7;font-size:12px}
+    .nav{display:flex;gap:7px;flex-wrap:wrap}.nav a{color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800}.nav a.active{background:var(--blue);border-color:var(--blue);color:white}
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:14px}.panel{background:rgba(11,38,56,.96);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 15px 45px #0004}.pad{padding:15px}
+    h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#bcd2de;margin:0 0 12px}
+    label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.field{margin-bottom:10px}select,input{width:100%;background:#061c2a;border:1px solid #21465a;color:var(--ink);border-radius:10px;padding:9px 10px;outline:none}
+    .tabs{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--line);background:#082231;flex-wrap:wrap}.tab{border:1px solid var(--line);background:#0b293b;color:#b9ced8;border-radius:10px;padding:9px 12px;font-weight:800}.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+    .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.btn{border:0;border-radius:10px;padding:9px 12px;font-weight:800;background:#17384b;color:white}.btn.primary{background:var(--blue)}.btn.good{background:var(--green);color:#03271e}.btn.warn{background:var(--orange);color:#2d1b00}.btn.danger{background:var(--red)}.btn.ghost{background:transparent;border:1px solid #285067}.btn:disabled{opacity:.45}
+    .message{padding:10px 12px;border-radius:11px;background:#082434;border:1px solid var(--line);font-size:12px;margin:8px 0}.message.good{border-color:#1b7257;color:#8df2c9}.message.bad{border-color:#7a2e35;color:#ffaaaa}.message.warn{border-color:#77501c;color:#ffd08a}
+    .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:13px}table{width:100%;border-collapse:collapse;min-width:880px}th,td{padding:9px;border-bottom:1px solid #163548;text-align:left;font-size:12px}th{position:sticky;top:0;background:#0a2a3d;color:#9eb6c3;text-transform:uppercase;font-size:10px;letter-spacing:.06em;z-index:2}.sticky1{position:sticky;left:0;background:#0b2638;z-index:1}.sticky2{position:sticky;left:210px;background:#0b2638;z-index:1}
+    .athlete{min-width:210px}.colour{min-width:90px}.attempt{width:92px;min-width:92px;text-align:center}.attempt select,.attempt input{padding:7px}.best{font-weight:900}.place{font-weight:900;font-size:15px}.muted{color:var(--muted)}
+    .color-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:-1px}.Blue{background:#3283ff}.Red{background:#ff5252}.White{background:#fff;border:1px solid #aaa}.Green{background:#21d98f}
+    .statrow{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}.stat{background:#082434;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted)}
+    .login{max-width:420px;margin:10vh auto}.login .panel{padding:22px}.login .btn{width:100%;margin-top:8px}.empty{padding:30px;text-align:center;color:var(--muted)}
+    .hjcell{text-align:center;min-width:92px}.hjbuttons{display:flex;gap:4px;justify-content:center}.hjbuttons button{width:26px;height:26px;border-radius:7px;border:1px solid #285067;background:#0a2a3d;color:white;font-weight:900}.hjbuttons button.active-clear{background:var(--green);color:#03271e}.hjbuttons button.active-miss{background:var(--red)}.hjbuttons button.active-pass{background:#566b78}
+    @media(max-width:900px){.grid{grid-template-columns:1fr}.shell{padding:9px}.statrow{grid-template-columns:repeat(2,1fr)}}
+  
+/* MOBILE-FIRST OPERATIONS V3 */
+
+@media(max-width:760px){
+  body{padding-bottom:calc(12px + env(safe-area-inset-bottom));-webkit-text-size-adjust:100%}
+  .shell{padding:8px}.topbar{flex-direction:column;align-items:stretch;gap:9px;margin-bottom:9px}
+  .brand{gap:9px}.mark{width:40px;height:40px;border-radius:11px}h1{font-size:17px;line-height:1.15}.sub{font-size:11px}
+  .nav{overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px;-webkit-overflow-scrolling:touch}.nav a{min-height:40px;display:flex;align-items:center;white-space:nowrap}
+  .topbar>div:last-child{width:100%;justify-content:space-between!important}.pill{max-width:67vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .grid{grid-template-columns:1fr;gap:9px}.panel{border-radius:14px}
+  aside.pad{padding:11px}aside .field{margin-bottom:8px}
+  select,input{min-height:46px;font-size:16px;padding:10px 11px}
+  .tabs{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;padding:7px;background:#082231ee;backdrop-filter:blur(8px)}
+  .tab{min-height:44px;padding:6px 4px;font-size:11px;border-radius:9px}
+  .pad{padding:10px}
+  .toolbar{position:sticky;bottom:calc(6px + env(safe-area-inset-bottom));z-index:18;background:#082231f2;border:1px solid var(--line);border-radius:12px;padding:7px;margin:8px 0 10px;box-shadow:0 -8px 24px #0005}
+  .toolbar .btn,.btn{min-height:44px;font-size:13px;padding:10px 12px}.toolbar .btn{flex:1 1 125px}
+  .tablewrap{-webkit-overflow-scrolling:touch;scrollbar-width:thin;overscroll-behavior-x:contain;border-radius:10px}
+  table{min-width:760px}th,td{padding:8px 7px;font-size:12px}th{font-size:9px}
+  .athlete{min-width:150px}.colour{min-width:72px}.sticky2{left:150px}.attempt{width:118px;min-width:118px}.attempt select,.attempt input{font-size:14px;min-height:42px;padding:7px}
+  .hjcell{min-width:132px}.hjbuttons{gap:6px}.hjbuttons button{width:38px;height:38px;border-radius:9px;font-size:15px;touch-action:manipulation}
+  .message{font-size:11px;padding:8px 9px}.empty{padding:22px 10px}
+  .login{margin:5vh 8px;max-width:none}.login .panel{padding:16px}
+}
+@media(min-width:761px) and (max-width:1100px){
+  .shell{padding:11px}.grid{grid-template-columns:260px 1fr;gap:10px}.pad{padding:12px}
+  select,input{min-height:42px}.hjbuttons button{width:32px;height:32px}
+}
+
+.record-card{padding:10px 12px;border-radius:11px;background:#0d3046;border:1px solid #2a617d;margin:8px 0;font-size:12px}.record-card b{color:#8fe8ff}.record-card .record-value{font-size:18px;color:#fff;font-weight:900;margin-left:5px}
+
+.hj-mobile-wrap{display:none}
+@media(max-width:760px){
+  .hj-mobile-wrap{display:block}
+  .hj-desktop-wrap{display:none}
+  .hj-mobile-top{position:sticky;top:51px;z-index:17;background:#082231f5;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:8px;backdrop-filter:blur(8px)}
+  .hj-height-nav{display:grid;grid-template-columns:44px 1fr 44px;gap:7px;align-items:center}
+  .hj-height-nav button{height:42px;border:1px solid #285067;background:#0a2a3d;color:#fff;border-radius:10px;font-size:20px;font-weight:900}
+  .hj-height-now{text-align:center}.hj-height-now b{display:block;font-size:24px;line-height:1}.hj-height-now span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .hj-mobile-tools{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:7px}.hj-mobile-tools input{min-height:42px}.hj-mobile-tools .btn{min-height:42px}
+  .hj-athlete-card{background:#082434;border:1px solid var(--line);border-radius:13px;padding:9px;margin-bottom:7px}
+  .hj-athlete-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}.hj-athlete-name{font-size:14px;font-weight:900;line-height:1.15}.hj-athlete-meta{font-size:11px;color:var(--muted);white-space:nowrap}
+  .hj-attempt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .hj-attempt-group{background:#061c2a;border:1px solid #17384b;border-radius:10px;padding:5px}
+  .hj-attempt-label{text-align:center;font-size:9px;color:#9eb6c3;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+  .hj-attempt-group .hjbuttons{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+  .hj-attempt-group .hjbuttons button{width:100%;height:36px;font-size:15px;border-radius:8px;padding:0}
+  .hj-done{height:36px;display:grid;place-items:center;border-radius:8px;background:#0b293b;color:#8df2c9;font-size:11px;font-weight:900}
+  .hj-closed{padding:13px;text-align:center;border-radius:10px;background:#30191d;border:1px solid #6d3037;color:#ffb3b8;font-weight:900}
+  .hj-elim{color:#ff8f96;font-size:10px;font-weight:900}
+  .hj-savebar{position:sticky;bottom:calc(5px + env(safe-area-inset-bottom));z-index:25;background:#082231f7;border:1px solid var(--line);border-radius:12px;padding:7px;margin-top:9px;box-shadow:0 -8px 24px #0006}.hj-savebar .btn{width:100%;min-height:48px}
+  .record-card{margin:5px 0 7px;padding:7px 9px}.record-card .record-value{font-size:16px}
+}
+
+.modalback{position:fixed;inset:0;background:#0009;display:grid;place-items:center;padding:14px;z-index:1000}
+.modalcard{width:min(520px,100%);background:#0b2638;border:1px solid #285067;border-radius:16px;padding:16px;box-shadow:0 20px 60px #0008}
+.modalgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modalactions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+@media(max-width:560px){.modalgrid{grid-template-columns:1fr}.modalcard{max-height:92vh;overflow:auto}}
+</style>
+
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
+  <link rel="apple-touch-icon" href="../icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FieldFlow Athletics">
+</head>
+<body>
+<div id="loginView" class="login">
+  <div class="panel">
+    <div class="brand" style="margin-bottom:18px"><div class="mark"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Field Operations · Admin · Mobile v3</div></div></div>
+    <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username" placeholder="contacto@fieldflow.cl"></div>
+    <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <button class="btn primary" id="loginBtn">Sign in</button>
+    <div id="loginMsg"></div>
+  </div>
+</div>
+
+<div id="appView" class="shell hidden">
+  <div class="topbar">
+    <div>
+      <div class="brand"><div class="mark"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Athletics Admin · Field</div></div></div>
+      <div class="nav" style="margin-top:8px">
+        <a href="../">Track</a>
+        <a class="active" href="./">Field</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center"><span id="userPill" class="pill"></span><button class="btn ghost" id="logoutBtn">Logout</button></div>
+  </div>
+
+  <div class="grid">
+    <aside class="panel pad">
+      <h2>Event selector</h2>
+      <div class="field"><label>Category</label><select id="category"></select></div>
+      <div class="field"><label>Gender</label><select id="gender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
+      <div class="field"><label>Colour</label><select id="colour"><option value="All">All colours</option><option value="Blue">Blue</option><option value="Red">Red</option><option value="White">White</option><option value="Green">Green</option></select></div>
+      <div class="field"><label>Field event</label><select id="event"></select></div>
+      <div id="eventInfo" class="message"></div>
+      
+      <h2 style="margin-top:18px">Students</h2>
+      <button class="btn good" id="addAthleteBtn" style="width:100%">+ Add student</button>
+      <div class="sub" style="margin-top:6px">Add a missing athlete directly from the event screen.</div>
+<h2 style="margin-top:18px">Quick status</h2>
+      <div id="quickStatus"></div>
+    </aside>
+
+    <main class="panel">
+      <div class="tabs">
+        <button class="tab active" data-tab="registrations">Registrations</button>
+        <button class="tab" data-tab="sheet">Competition sheet</button>
+        <button class="tab" data-tab="ranking">Ranking</button>
+      </div>
+      <section id="registrationsPane" class="pad"></section>
+      <section id="sheetPane" class="pad hidden"></section>
+      <section id="rankingPane" class="pad hidden"></section>
+    </main>
+  </div>
+</div>
+
+
+<div id="athleteModal" class="modalback hidden">
+  <div class="modalcard">
+    <div class="flex" style="justify-content:space-between;margin-bottom:10px">
+      <div><h1 style="font-size:18px">Add student</h1><div class="sub">The student will be available immediately for registration.</div></div>
+      <button class="btn ghost mini" id="closeAthleteModal">✕</button>
+    </div>
+    <div class="modalgrid">
+      <div class="field"><label>First name</label><input id="newFirstName" autocomplete="off"></div>
+      <div class="field"><label>Last name</label><input id="newLastName" autocomplete="off"></div>
+      <div class="field"><label>Year</label><select id="newLevel"><option>Y5</option><option>Y6</option><option>Y7</option><option>Y8</option><option>Intermediate</option><option>Senior</option></select></div>
+      <div class="field"><label>Gender</label><select id="newGender"><option value="F">Female</option><option value="M">Male</option></select></div>
+      <div class="field"><label>Colour</label><select id="newColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
+      <div class="field"><label>Athlete ID</label><input id="newAthleteCode" placeholder="Auto-generated if blank"></div>
+    </div>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:4px"><input id="newRegisterCurrent" type="checkbox" style="width:auto"> Register in the currently selected event</label>
+    <div class="modalactions"><button class="btn ghost" id="cancelAthlete">Cancel</button><button class="btn primary" id="saveAthlete">Save student</button></div>
+    <div id="newAthleteMsg"></div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const state={tournament:null,events:[],athletes:[],registrations:[],attempts:[],heights:[],hjAttempts:[],hjDraft:{},hjMobileHeightIndex:0,ranking:[],tab:'registrations',currentEvent:null};
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function colorDot(c){return '<span class="color-dot '+esc(c)+'"></span>'+esc(c)}
+function genderName(g){return g==='F'?'Girls':'Boys'}
+function msg(el,text,type=''){if(el)el.innerHTML='<div class="message '+type+'">'+esc(text)+'</div>'}
+function currentEvent(){return state.events.find(e=>e.id===$('event').value)||null}
+function isHJ(){return state.currentEvent?.code==='HJ'}
+function recordBanner(e){
+  if(!e?.record_value)return '<div class="record-card"><b>RECORD:</b> <span class="muted">No record listed in Intercolour Records 2023.</span></div>';
+  return '<div class="record-card"><b>RECORD:</b><span class="record-value">'+esc(e.record_value)+'</span> <span class="muted">· '+esc(e.record_year)+(e.record_source_event?' · '+esc(e.record_source_event):'')+'</span></div>';
+}
+
+async function signIn(){
+  $('loginBtn').disabled=true;
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  $('loginBtn').disabled=false;
+  if(error){msg($('loginMsg'),error.message,'bad');return}
+  await boot();
+}
+async function signOut(){await sb.auth.signOut();location.reload()}
+
+function wire(){
+  $('loginBtn').onclick=signIn;$('logoutBtn').onclick=signOut;
+  $('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
+  $('category').onchange=refreshEventList;$('gender').onchange=refreshEventList;$('colour').onchange=renderAll;$('event').onchange=loadEvent;
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+}
+function setTab(tab){
+  state.tab=tab;
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.tab===tab));
+  ['registrations','sheet','ranking'].forEach(x=>$(x+'Pane').classList.toggle('hidden',x!==tab));
+  renderAll();
+}
+
+
+function openAthleteModal(){
+  const e=state.currentEvent;
+  $('newFirstName').value='';$('newLastName').value='';$('newAthleteCode').value='';$('newRegisterCurrent').checked=false;
+  $('newLevel').value=e?.category||$('category')?.value||'Y7';
+  $('newGender').value=e?.gender||$('gender')?.value||'F';
+  const c=$('colour')?.value; $('newColor').value=(c&&c!=='All')?c:'Red';
+  $('newAthleteMsg').innerHTML='';
+  $('athleteModal').classList.remove('hidden');
+  setTimeout(()=>$('newFirstName').focus(),50);
+}
+function closeAthleteModal(){$('athleteModal').classList.add('hidden')}
+async function saveNewAthlete(){
+  const first=$('newFirstName').value.trim(), last=$('newLastName').value.trim();
+  if(!first||!last){msg($('newAthleteMsg'),'First name and last name are required.','bad');return}
+  const level=$('newLevel').value, gender=$('newGender').value, color=$('newColor').value;
+  const code=$('newAthleteCode').value.trim() || ('MAN-'+Date.now());
+  const btn=$('saveAthlete');btn.disabled=true;
+  try{
+    const {data:ath,error}=await sb.from('athletics_athletes').insert({
+      tournament_id:state.tournament.id,external_code:code,last_name:last,first_name:first,
+      level,gender,color,active:true,source_batch:'manual_admin'
+    }).select().single();
+    if(error) throw error;
+    if($('newRegisterCurrent').checked && state.currentEvent && state.currentEvent.category===level && state.currentEvent.gender===gender){
+      const {error:re}=await sb.from('athletics_registrations').insert({
+        tournament_id:state.tournament.id,event_id:state.currentEvent.id,athlete_id:ath.id,status:'registered'
+      });
+      if(re) throw re;
+    }
+    closeAthleteModal();
+    if(state.currentEvent && state.currentEvent.category===level && state.currentEvent.gender===gender) await reloadData();
+  }catch(e){msg($('newAthleteMsg'),e.message||String(e),'bad')}
+  finally{btn.disabled=false}
+}
+function wireAthleteModal(){
+  const b=$('addAthleteBtn');if(b)b.onclick=openAthleteModal;
+  $('closeAthleteModal').onclick=closeAthleteModal;
+  $('cancelAthlete').onclick=closeAthleteModal;
+  $('saveAthlete').onclick=saveNewAthlete;
+  $('athleteModal').onclick=e=>{if(e.target===$('athleteModal'))closeAthleteModal()};
+}
+
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');$('userPill').textContent=session.user.email||'Admin';
+
+  const {data:t,error:te}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
+  if(te){alert(te.message);return}
+  state.tournament=t;
+  const {data:e,error:ee}=await sb.from('athletics_events').select('*').eq('tournament_id',t.id).eq('discipline','field').order('sort_order');
+  if(ee){alert('Unable to load field events: '+ee.message);return}
+  state.events=e||[];
+  $('category').innerHTML=['Y5','Y6','Y7','Y8','Intermediate','Senior'].map(x=>'<option>'+x+'</option>').join('');
+  await refreshEventList();
+  wireAthleteModal();
+}
+async function refreshEventList(){
+  const list=state.events.filter(e=>e.category===$('category').value&&e.gender===$('gender').value);
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
+  await loadEvent();
+}
+async function loadEvent(){
+  state.currentEvent=currentEvent();
+  if(!state.currentEvent){renderAll();return}
+  const e=state.currentEvent;
+  $('eventInfo').innerHTML='<b>'+esc(e.name)+'</b><br><span class="muted">'+esc(e.category)+' · '+genderName(e.gender)+' · '+(e.code==='HJ'?'Height progression / countback':(e.attempt_limit||3)+' attempts / best mark')+'</span>'+recordBanner(e);
+  await reloadData();
+}
+async function reloadData(){
+  const e=state.currentEvent;if(!e)return;
+  const [a,r]=await Promise.all([
+    sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).eq('level',e.category).eq('gender',e.gender).eq('active',true).order('color').order('last_name'),
+    sb.from('athletics_registrations').select('*').eq('event_id',e.id).order('created_at')
+  ]);
+  if(a.error||r.error){alert((a.error||r.error).message);return}
+  state.athletes=a.data||[];state.registrations=r.data||[];
+
+  if(isHJ()){
+    const [h,at,rank]=await Promise.all([
+      sb.from('athletics_high_jump_heights').select('*').eq('event_id',e.id).order('sequence_no'),
+      sb.from('athletics_high_jump_attempts').select('*').eq('event_id',e.id),
+      sb.from('athletics_high_jump_ranking').select('*').eq('event_id',e.id).order('place')
+    ]);
+    state.heights=h.data||[];state.hjAttempts=at.data||[];state.hjDraft={};state.attempts=[];state.ranking=rank.data||[];
+  }else{
+    const [at,rank]=await Promise.all([
+      sb.from('athletics_field_attempts').select('*').eq('event_id',e.id).order('attempt_no'),
+      sb.from('athletics_field_measured_ranking').select('*').eq('event_id',e.id).order('place')
+    ]);
+    state.attempts=at.data||[];state.ranking=rank.data||[];state.heights=[];state.hjAttempts=[];
+  }
+  renderAll();
+}
+function renderAll(){renderStatus();renderRegistrations();renderSheet();renderRanking()}
+function renderStatus(){
+  const counts={Blue:0,Red:0,White:0,Green:0};
+  state.registrations.filter(r=>r.status==='registered').forEach(r=>{const a=state.athletes.find(x=>x.id===r.athlete_id);if(a)counts[a.color]++});
+  $('quickStatus').innerHTML=['Blue','Red','White','Green'].map(c=>'<div class="message">'+colorDot(c)+' <b>'+counts[c]+'</b> registered · unlimited</div>').join('');
+}
+function regSet(){return new Set(state.registrations.filter(r=>r.status==='registered').map(r=>r.athlete_id))}
+function renderRegistrations(){
+  const p=$('registrationsPane'),e=state.currentEvent;if(!e){p.innerHTML='<div class="empty">Select an event.</div>';return}
+  const colour=$('colour').value,visible=colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour),reg=regSet();
+  p.innerHTML='<div class="toolbar"><button class="btn primary" id="saveRegs">Save changes</button><span class="muted">TEST MODE: unlimited athletes per colour and event.</span></div>'+
+  '<div class="tablewrap"><table><thead><tr><th>In</th><th>Athlete</th><th>Colour</th><th>Category</th></tr></thead><tbody>'+
+  visible.map(a=>'<tr><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>').join('')+
+  '</tbody></table></div><div id="regMsg"></div>';
+  $('saveRegs').onclick=saveRegistrations;
+}
+async function saveRegistrations(){
+  const selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id),existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
+  const colour=$('colour').value,visibleIds=new Set((colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour)).map(a=>a.id));
+  const toAdd=selected.filter(id=>!existing.has(id)),toDel=state.registrations.filter(r=>visibleIds.has(r.athlete_id)&&!selected.includes(r.athlete_id)).map(r=>r.id);
+  for(const athlete_id of toAdd){
+    const {error}=await sb.from('athletics_registrations').insert({tournament_id:state.tournament.id,event_id:state.currentEvent.id,athlete_id,status:'registered'});
+    if(error){msg($('regMsg'),error.message,'bad');return}
+  }
+  if(toDel.length){
+    const {error}=await sb.from('athletics_registrations').delete().in('id',toDel);
+    if(error){msg($('regMsg'),error.message,'bad');return}
+  }
+  await reloadData();msg($('regMsg'),'Registrations saved.','good');
+}
+function registeredRows(){
+  return state.registrations.filter(r=>r.status==='registered').map(r=>({r,a:state.athletes.find(a=>a.id===r.athlete_id)})).filter(x=>x.a)
+}
+function attemptFor(regId,no){return state.attempts.find(x=>x.registration_id===regId&&x.attempt_no===no)}
+function renderSheet(){
+  const p=$('sheetPane'),e=state.currentEvent;if(!e){p.innerHTML='';return}
+  if(isHJ())renderHJSheet();else renderMeasuredSheet();
+}
+function renderMeasuredSheet(){
+  const p=$('sheetPane'),rows=registeredRows(),limit=state.currentEvent.attempt_limit||3;
+  if(!rows.length){p.innerHTML='<div class="empty">Register athletes first.</div>';return}
+  p.innerHTML=recordBanner(state.currentEvent)+'<div class="message">Use a numeric mark in metres for a valid attempt. Use Foul or Pass when appropriate.</div><div class="toolbar"><button class="btn good" id="saveMeasured">Save all attempts</button></div><div id="sheetMsg"></div>'+
+  '<div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
+  Array.from({length:limit},(_,i)=>'<th>Attempt '+(i+1)+'</th>').join('')+
+  '<th>Best</th><th>2nd</th><th>3rd</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
+  rows.map(({r,a})=>{
+    const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
+    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b></td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
+    Array.from({length:limit},(_,i)=>{const at=attemptFor(r.id,i+1);return '<td class="attempt"><select class="mStatus" data-reg="'+r.id+'" data-no="'+(i+1)+'"><option value="pending" '+((at?.status||'pending')==='pending'?'selected':'')+'>—</option><option value="valid" '+(at?.status==='valid'?'selected':'')+'>Valid</option><option value="foul" '+(at?.status==='foul'?'selected':'')+'>Foul</option><option value="pass" '+(at?.status==='pass'?'selected':'')+'>Pass</option><option value="dns" '+(at?.status==='dns'?'selected':'')+'>DNS</option></select><input class="mMark" data-reg="'+r.id+'" data-no="'+(i+1)+'" type="number" step="0.01" min="0" placeholder="m" value="'+(at?.mark_m??'')+'"></td>'}).join('')+
+    '<td class="best">'+(rank.best_mark??'—')+'</td><td>'+(rank.second_mark??'—')+'</td><td>'+(rank.third_mark??'—')+'</td><td class="place">'+(rank.best_mark!=null?rank.place:'—')+'</td><td><b>'+(rank.best_mark!=null?rank.points:'—')+'</b></td></tr>'
+  }).join('')+'</tbody></table></div>';
+  $('saveMeasured').onclick=saveMeasured;
+}
+async function saveMeasured(){
+  const cells=[...document.querySelectorAll('.mStatus')];
+  for(const s of cells){
+    const reg=s.dataset.reg,no=Number(s.dataset.no),status=s.value,markEl=document.querySelector('.mMark[data-reg="'+reg+'"][data-no="'+no+'"]'),raw=markEl.value;
+    const mark=status==='valid'?(raw===''?null:Number(raw)):null;
+    if(status==='valid'&&mark===null){msg($('sheetMsg'),'A valid attempt needs a mark.','bad');return}
+    const payload={tournament_id:state.tournament.id,event_id:state.currentEvent.id,registration_id:reg,attempt_no:no,status,mark_m:mark,updated_at:new Date().toISOString()};
+    const {error}=await sb.from('athletics_field_attempts').upsert(payload,{onConflict:'event_id,registration_id,attempt_no'});
+    if(error){msg($('sheetMsg'),error.message,'bad');return}
+  }
+  await reloadData();msg($('sheetMsg'),'Attempts saved and ranking recalculated.','good');
+}
+function hjKey(regId,heightId,no){return regId+'|'+heightId+'|'+no}
+function hjAttempt(regId,heightId,no){
+  const key=hjKey(regId,heightId,no);
+  if(Object.prototype.hasOwnProperty.call(state.hjDraft,key)) return {result:state.hjDraft[key]};
+  return state.hjAttempts.find(x=>x.registration_id===regId&&x.height_id===heightId&&x.attempt_no===no)
+}
+function hjEliminationSequence(regId){
+  for(const h of state.heights){
+    const results=[1,2,3].map(no=>hjAttempt(regId,h.id,no)?.result||'');
+    const hasClear=results.includes('clear');
+    const misses=results.filter(x=>x==='miss').length;
+    if(!hasClear && misses===3) return h.sequence_no;
+  }
+  return null;
+}
+function renderHJSheet(){
+  const p=$('sheetPane'),rows=registeredRows();
+  if(window.innerWidth<=760){renderHJMobile(p,rows);return}
+  let setup=recordBanner(state.currentEvent)+'<div class="toolbar"><input id="heightInput" type="number" step="0.01" min="0.5" style="width:130px" placeholder="New height m"><button class="btn primary" id="addHeight">Add height</button><button class="btn good" id="saveHJ">Save high jump</button></div><div id="sheetMsg"></div>';
+  if(!rows.length){p.innerHTML=setup+'<div class="empty">Register athletes first.</div>';wireHJ();return}
+  if(!state.heights.length){p.innerHTML=setup+'<div class="empty">Add the first competition height.</div>';wireHJ();return}
+  p.innerHTML=setup+'<div class="message">O = clear · X = miss · – = pass. Each height shows 1st, 2nd and 3rd attempt. Three X at the same height eliminate the athlete and close all higher heights.</div>'+
+  '<div class="hj-desktop-wrap"><div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
+  state.heights.map(h=>'<th class="hjcell">'+Number(h.height_m).toFixed(2)+' m</th>').join('')+
+  '<th>Best</th><th>Miss @ best</th><th>Total misses</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
+  rows.map(({r,a})=>{
+    const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
+    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b></td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
+    state.heights.map(h=>{
+      const eliminatedAt=hjEliminationSequence(r.id);
+      if(eliminatedAt!==null && h.sequence_no>eliminatedAt){
+        return '<td class="hjcell"><span class="muted"><b>Closed</b></span></td>';
+      }
+      return '<td class="hjcell">'+[1,2,3].map(no=>{
+        const at=hjAttempt(r.id,h.id,no),res=at?.result||'';
+        const label=no===1?'1st attempt':no===2?'2nd attempt':'3rd attempt';
+        return '<div style="display:grid;grid-template-columns:74px 1fr;gap:5px;align-items:center;margin-bottom:4px"><span class="muted" style="font-size:10px;text-align:right">'+label+'</span><div class="hjbuttons"><button type="button" class="hjbtn '+(res==='clear'?'active-clear':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="clear">O</button><button type="button" class="hjbtn '+(res==='miss'?'active-miss':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="miss">X</button><button type="button" class="hjbtn '+(res==='pass'?'active-pass':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="pass">–</button></div></div>'
+      }).join('')+'</td>'
+    }).join('')+
+    '<td class="best">'+(rank.best_height??'—')+'</td><td>'+(rank.best_height!=null?rank.misses_at_best:'—')+'</td><td>'+(rank.best_height!=null?rank.total_misses:'—')+'</td><td class="place">'+(rank.best_height!=null?rank.place:'—')+'</td><td><b>'+(rank.best_height!=null?rank.points:'—')+'</b></td></tr>'
+  }).join('')+'</tbody></table></div></div>';
+  wireHJ();
+}
+function renderHJMobile(p,rows){
+  if(!state.heights.length){
+    p.innerHTML=recordBanner(state.currentEvent)+'<div class="hj-mobile-tools"><input id="heightInput" type="number" step="0.01" min="0.5" placeholder="First height (m)"><button class="btn primary" id="addHeight">Add</button></div><div id="sheetMsg"></div><div class="empty">Add the first competition height.</div>';
+    wireHJ();return;
+  }
+  state.hjMobileHeightIndex=Math.max(0,Math.min(state.hjMobileHeightIndex,state.heights.length-1));
+  const h=state.heights[state.hjMobileHeightIndex];
+  let html='<div class="hj-mobile-wrap">'+recordBanner(state.currentEvent)+
+    '<div class="hj-mobile-top"><div class="hj-height-nav"><button id="hjPrev" '+(state.hjMobileHeightIndex===0?'disabled':'')+'>‹</button><div class="hj-height-now"><span>Current height</span><b>'+Number(h.height_m).toFixed(2)+' m</b></div><button id="hjNext" '+(state.hjMobileHeightIndex===state.heights.length-1?'disabled':'')+'>›</button></div>'+
+    '<div class="hj-mobile-tools"><input id="heightInput" type="number" step="0.01" min="0.5" placeholder="Add height (m)"><button class="btn primary" id="addHeight">Add</button></div></div><div id="sheetMsg"></div>';
+  if(!rows.length) html+='<div class="empty">Register athletes first.</div>';
+  else html+=rows.map(({r,a})=>{
+    const eliminatedAt=hjEliminationSequence(r.id);
+    const closed=eliminatedAt!==null && h.sequence_no>eliminatedAt;
+    const results=[1,2,3].map(no=>hjAttempt(r.id,h.id,no)?.result||'');
+    const currentElim=!results.includes('clear')&&results.filter(x=>x==='miss').length===3;
+    const clearAt=results.findIndex(x=>x==='clear')+1;
+    const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
+    let body='';
+    if(closed) body='<div class="hj-closed">CLOSED · athlete eliminated at a previous height</div>';
+    else body='<div class="hj-attempt-grid">'+[1,2,3].map(no=>{
+      const res=results[no-1];
+      const done=clearAt>0&&no>clearAt;
+      const lab=no===1?'1st':no===2?'2nd':'3rd';
+      if(done)return '<div class="hj-attempt-group"><div class="hj-attempt-label">'+lab+'</div><div class="hj-done">DONE</div></div>';
+      return '<div class="hj-attempt-group"><div class="hj-attempt-label">'+lab+'</div><div class="hjbuttons"><button type="button" class="hjbtn '+(res==='clear'?'active-clear':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="clear">O</button><button type="button" class="hjbtn '+(res==='miss'?'active-miss':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="miss">X</button><button type="button" class="hjbtn '+(res==='pass'?'active-pass':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="pass">–</button></div></div>';
+    }).join('')+'</div>';
+    return '<div class="hj-athlete-card"><div class="hj-athlete-head"><div><div class="hj-athlete-name">'+esc(a.last_name)+', '+esc(a.first_name)+'</div><div class="hj-athlete-meta">'+colorDot(a.color)+(rank.best_height!=null?' · Best '+rank.best_height+' m':'')+'</div></div>'+(currentElim?'<div class="hj-elim">ELIMINATED</div>':'')+'</div>'+body+'</div>';
+  }).join('');
+  html+='<div class="hj-savebar"><button class="btn good" id="saveHJ">Save high jump</button></div></div>';
+  p.innerHTML=html; wireHJ();
+}
+function wireHJ(){
+  if($('addHeight'))$('addHeight').onclick=addHeight;
+  if($('saveHJ'))$('saveHJ').onclick=saveHJ;
+  if($('hjPrev'))$('hjPrev').onclick=()=>{state.hjMobileHeightIndex=Math.max(0,state.hjMobileHeightIndex-1);renderHJSheet()};
+  if($('hjNext'))$('hjNext').onclick=()=>{state.hjMobileHeightIndex=Math.min(state.heights.length-1,state.hjMobileHeightIndex+1);renderHJSheet()};
+  document.querySelectorAll('.hjbtn').forEach(b=>b.onclick=()=>{
+    const k=hjKey(b.dataset.reg,b.dataset.height,b.dataset.no);
+    state.hjDraft[k]=b.dataset.result;
+    renderHJSheet();
+  });
+}
+async function addHeight(){
+  const v=Number($('heightInput').value);if(!v){msg($('sheetMsg'),'Enter a valid height.','bad');return}
+  const seq=(state.heights.at(-1)?.sequence_no||0)+1;
+  const {error}=await sb.from('athletics_high_jump_heights').insert({tournament_id:state.tournament.id,event_id:state.currentEvent.id,height_m:v,sequence_no:seq});
+  if(error){msg($('sheetMsg'),error.message,'bad');return}
+  await reloadData();
+}
+async function saveHJ(){
+  for(const [key,result] of Object.entries(state.hjDraft)){
+    const [reg,height,no]=key.split('|');
+    const payload={tournament_id:state.tournament.id,event_id:state.currentEvent.id,registration_id:reg,height_id:height,attempt_no:Number(no),result,updated_at:new Date().toISOString()};
+    const {error}=await sb.from('athletics_high_jump_attempts').upsert(payload,{onConflict:'registration_id,height_id,attempt_no'});
+    if(error){msg($('sheetMsg'),error.message,'bad');return}
+  }
+  await reloadData();msg($('sheetMsg'),'High jump sheet saved and countback recalculated.','good');
+}
+function renderRanking(){
+  const p=$('rankingPane'),rank=state.ranking.filter(x=>isHJ()?x.best_height!=null:x.best_mark!=null);
+  if(!rank.length){p.innerHTML='<div class="empty">No valid results yet.</div>';return}
+  p.innerHTML='<div class="tablewrap"><table><thead><tr><th>Place</th><th>Athlete</th><th>Colour</th><th>'+(isHJ()?'Best height':'Best mark')+'</th><th>'+(isHJ()?'Misses':'2nd mark')+'</th><th>Points</th></tr></thead><tbody>'+
+  rank.map(x=>'<tr><td class="place">'+x.place+'</td><td><b>'+esc(x.last_name)+', '+esc(x.first_name)+'</b></td><td>'+colorDot(x.color)+'</td><td class="best">'+(isHJ()?x.best_height:x.best_mark)+'</td><td>'+(isHJ()?x.total_misses:(x.second_mark??'—'))+'</td><td><b>'+x.points+'</b></td></tr>').join('')+
+  '</tbody></table></div>';
+}
+sb.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT')location.reload()});
+wire();boot();
+</script>
+
+<script>
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js').catch(console.error));}
+</script>
+</body>
+</html>
