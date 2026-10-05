@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071d2d">
+<link rel="manifest" href="../manifest.webmanifest">
+<title>FieldFlow Athletics · Students</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#061722;--panel:#0b2230;--line:#285067;--text:#eef8fc;--muted:#9db4bf;--blue:#0b5fff;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#061722,#071d2d);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:50;background:#061722f5;border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;justify-content:space-between;align-items:center;backdrop-filter:blur(10px)}
+.brand{display:flex;align-items:center;gap:10px}.brand img{width:46px;height:46px;border-radius:11px;object-fit:cover}.brand h1{font-size:17px;margin:0}.sub{color:var(--muted);font-size:12px}
+.nav{display:flex;gap:7px;flex-wrap:wrap}.nav a{color:#d7e8f0;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800}.nav a.active{background:var(--blue);color:#fff}
+.wrap{max-width:1200px;margin:auto;padding:14px}.grid{display:grid;grid-template-columns:360px 1fr;gap:14px}
+.panel{background:#0b2230;border:1px solid var(--line);border-radius:16px;overflow:hidden}.pad{padding:14px}
+h2{font-size:15px;margin:0 0 10px}.field{margin:10px 0}.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:5px}
+input,select,button{font:inherit}.input,input[type=file]{width:100%;background:#071d2d;color:#fff;border:1px solid var(--line);border-radius:10px;padding:11px}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0d2a3a;color:#fff;font-weight:800;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue)}.btn.good{background:#0d5f4a;border-color:#148566}.btn.bad{background:#64252b;border-color:#9d3942}.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row .grow{flex:1}
+.message{border:1px solid var(--line);border-radius:11px;padding:10px;font-size:12px;margin-top:9px;background:#081c28}.message.good{border-color:#1d8b6e}.message.warn{border-color:#9a6b20}.message.bad{border-color:#a33b46}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse;font-size:12px}.table th,.table td{padding:9px;border-bottom:1px solid #173747;text-align:left;white-space:nowrap}.table th{position:sticky;top:0;background:#0b2230;z-index:2;color:#bcd0d9;font-size:10px;text-transform:uppercase}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.Blue{background:#0b5fff}.Red{background:#ff4d4d}.White{background:#fff;border:1px solid #8da0aa}.Green{background:#18d39e}
+.changes{display:grid;gap:7px;max-height:320px;overflow:auto}.change{border:1px solid #24485a;border-radius:10px;padding:9px;background:#071d2d}.change b{font-size:12px}.change span{font-size:11px;color:var(--muted)}
+.hidden{display:none!important}.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;color:#d8e8ef}
+@media(max-width:850px){.grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <div class="brand"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"><div><h1>FieldFlow Athletics</h1><div class="sub">Student Database</div></div></div>
+    <div class="nav" style="margin-top:8px">
+      <a href="../">Track</a><a href="../field/">Field</a><a class="active" href="./">Students</a><a href="../print/" target="_blank">Print</a>
+    </div>
+  </div>
+  <div class="row"><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+</div>
+
+<div class="wrap">
+  <div id="loginView" class="panel pad hidden" style="max-width:430px;margin:60px auto">
+    <h2>Admin login</h2>
+    <div class="field"><label>Email</label><input class="input" id="email" type="email" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input class="input" id="password" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" id="loginBtn">Login</button><div id="loginMsg"></div>
+  </div>
+
+  <div id="appView" class="grid hidden">
+    <aside class="panel pad">
+      <h2>Google Sheets master roster</h2>
+      <div class="message">Use Google Sheets for day-to-day corrections. Keep <b>athlete_id</b> unchanged; names, gender, level, colour and Active can be edited.</div>
+      <div class="row" style="margin-top:10px">
+        <a class="btn primary grow" style="text-align:center;text-decoration:none" target="_blank" href="https://docs.google.com/spreadsheets/d/1r3UDU4L0P8qy2toUqYydAFbinaPg-uRjje3uOOtBkag/edit">Open Google Sheet</a>
+        <a class="btn grow" style="text-align:center;text-decoration:none" href="https://docs.google.com/spreadsheets/d/1r3UDU4L0P8qy2toUqYydAFbinaPg-uRjje3uOOtBkag/export?format=csv&gid=733314409">Download CSV</a>
+      </div>
+
+      <h2 style="margin-top:20px">Sync roster</h2>
+      <div class="sub">1. Edit the Sheet. 2. Download CSV. 3. Select it here. 4. Preview and apply.</div>
+      <div class="field"><label>Students CSV</label><input id="rosterFile" type="file" accept=".csv,text/csv"></div>
+      <div id="previewMsg" class="message">No file selected.</div>
+      <button class="btn primary" id="previewBtn" disabled style="width:100%;margin-top:8px">Preview changes</button>
+      <button class="btn good" id="applyBtn" disabled style="width:100%;margin-top:8px">Apply sync</button>
+      <div id="syncMsg"></div>
+      <div class="message warn"><b>Safe sync:</b> this does not delete heats, results or registrations. Athletes with Active = FALSE are hidden from future registrations.</div>
+    </aside>
+
+    <main class="panel">
+      <div class="pad">
+        <div class="row"><div class="grow"><h2>Current Supabase roster</h2><div class="sub" id="lastRefresh">Loading…</div></div><button class="btn" id="refreshBtn">Refresh</button></div>
+        <div id="stats" class="stats" style="margin-top:10px"></div>
+        <div class="field"><input class="input" id="search" placeholder="Search by athlete ID, surname or first name…"></div>
+        <div id="changePanel" class="hidden"><h2>Preview</h2><div id="changeSummary" class="stats"></div><div id="changes" class="changes" style="margin-top:10px"></div></div>
+      </div>
+      <div class="tablewrap" style="max-height:62vh"><table class="table"><thead><tr><th>ID</th><th>Surname</th><th>Name</th><th>Gender</th><th>Level</th><th>Colour</th><th>Active</th></tr></thead><tbody id="tbody"></tbody></table></div>
+    </main>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+let state={tournament:null,athletes:[],pending:[],diff:null};
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+text+'</div>'}
+function parseCsv(text){
+  const rows=[];let row=[],cur='',quoted=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(ch==='"'){if(quoted&&text[i+1]==='"'){cur+='"';i++}else quoted=!quoted}
+    else if(ch===','&&!quoted){row.push(cur);cur=''}
+    else if((ch==='\n'||ch==='\r')&&!quoted){
+      if(ch==='\r'&&text[i+1]==='\n')i++;
+      row.push(cur);cur='';
+      if(row.some(v=>String(v).trim()!==''))rows.push(row);
+      row=[];
+    }else cur+=ch;
+  }
+  if(cur!==''||row.length){row.push(cur);if(row.some(v=>String(v).trim()!==''))rows.push(row)}
+  if(!rows.length)throw new Error('CSV is empty.');
+  const h=rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const ix=n=>h.findIndex(x=>x.toLowerCase()===n.toLowerCase());
+  const map={id:ix('athlete_id'),last:ix('Apellido'),first:ix('Nombre'),gender:ix('Genero'),level:ix('Nivel'),color:ix('Color'),active:ix('Activo')};
+  if([map.id,map.last,map.first,map.gender,map.level,map.color].some(i=>i<0))throw new Error('Required columns: athlete_id, Apellido, Nombre, Genero, Nivel, Color. Activo is optional.');
+  const seen=new Set();
+  return rows.slice(1).filter(r=>String(r[map.id]||'').trim()).map((r,n)=>{
+    const x={
+      external_code:String(r[map.id]||'').trim(),
+      last_name:String(r[map.last]||'').trim(),
+      first_name:String(r[map.first]||'').trim(),
+      gender:String(r[map.gender]||'').trim().toUpperCase(),
+      level:String(r[map.level]||'').trim(),
+      color:String(r[map.color]||'').trim(),
+      active:map.active<0?true:!['FALSE','0','NO','N'].includes(String(r[map.active]||'TRUE').trim().toUpperCase())
+    };
+    if(seen.has(x.external_code))throw new Error('Duplicate athlete_id: '+x.external_code);
+    seen.add(x.external_code);
+    if(!x.last_name||!x.first_name)throw new Error('Missing name at row '+(n+2));
+    if(!['M','F'].includes(x.gender))throw new Error('Invalid gender at row '+(n+2));
+    if(!['Y5','Y6','Y7','Y8','Intermediate','Senior'].includes(x.level))throw new Error('Invalid level at row '+(n+2)+': '+x.level);
+    if(!['Blue','Red','White','Green'].includes(x.color))throw new Error('Invalid colour at row '+(n+2)+': '+x.color);
+    return x;
+  });
+}
+function computeDiff(incoming){
+  const old=new Map(state.athletes.map(x=>[x.external_code,x]));
+  const added=[],modified=[],unchanged=[],deactivated=[];
+  for(const x of incoming){
+    const prev=old.get(x.external_code);
+    if(!prev){added.push({after:x});continue}
+    const fields=['last_name','first_name','gender','level','color','active'];
+    const changes=fields.filter(k=>String(prev[k])!==String(x[k])).map(k=>({field:k,before:prev[k],after:x[k]}));
+    if(changes.length){modified.push({before:prev,after:x,changes});if(prev.active&&!x.active)deactivated.push(x)}
+    else unchanged.push(x);
+  }
+  return {added,modified,unchanged,deactivated,total:incoming.length};
+}
+function renderDiff(){
+  const d=state.diff;if(!d)return;
+  $('changePanel').classList.remove('hidden');
+  const cards=[['New',d.added.length],['Modified',d.modified.length],['Unchanged',d.unchanged.length],['Deactivated',d.deactivated.length]];
+  $('changeSummary').innerHTML=cards.map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+  const rows=[
+    ...d.added.slice(0,50).map(x=>'<div class="change"><b>NEW · '+esc(x.after.external_code)+' · '+esc(x.after.last_name)+' '+esc(x.after.first_name)+'</b><br><span>'+esc(x.after.level)+' · '+esc(x.after.color)+'</span></div>'),
+    ...d.modified.slice(0,100).map(x=>'<div class="change"><b>UPDATE · '+esc(x.after.external_code)+' · '+esc(x.after.last_name)+' '+esc(x.after.first_name)+'</b><br><span>'+x.changes.map(c=>esc(c.field)+': '+esc(c.before)+' → '+esc(c.after)).join(' · ')+'</span></div>')
+  ];
+  $('changes').innerHTML=rows.join('')||'<div class="message">No changes detected.</div>';
+}
+function renderRoster(){
+  const q=$('search').value.trim().toLowerCase();
+  const list=state.athletes.filter(x=>!q||[x.external_code,x.last_name,x.first_name,x.level,x.color].some(v=>String(v||'').toLowerCase().includes(q)));
+  $('tbody').innerHTML=list.map(x=>'<tr><td>'+esc(x.external_code)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td>'+esc(x.gender)+'</td><td>'+esc(x.level)+'</td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td>'+(x.active?'Yes':'No')+'</td></tr>').join('');
+  const active=state.athletes.filter(x=>x.active).length;
+  const levels=new Set(state.athletes.filter(x=>x.active).map(x=>x.level)).size;
+  const colors=new Set(state.athletes.filter(x=>x.active).map(x=>x.color)).size;
+  $('stats').innerHTML=[['Total',state.athletes.length],['Active',active],['Levels',levels],['Colours',colors]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+}
+async function loadRoster(){
+  const {data,error}=await sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).order('external_code');
+  if(error)throw error;
+  state.athletes=data||[];renderRoster();
+  $('lastRefresh').textContent='Updated '+new Date().toLocaleTimeString();
+}
+async function previewFile(){
+  try{
+    const f=$('rosterFile').files?.[0];if(!f)return;
+    state.pending=parseCsv(await f.text());
+    state.diff=computeDiff(state.pending);
+    $('previewMsg').innerHTML='<b>'+state.pending.length+' athletes found</b>';
+    renderDiff();
+    $('applyBtn').disabled=false;
+    msg($('syncMsg'),'Preview ready. Review the changes before applying.','good');
+  }catch(e){state.pending=[];state.diff=null;$('applyBtn').disabled=true;msg($('syncMsg'),esc(e.message||String(e)),'bad')}
+}
+async function applySync(){
+  if(!state.pending.length||!state.diff)return;
+  const changes=state.diff.added.length+state.diff.modified.length;
+  if(!confirm('Apply '+changes+' roster changes to FieldFlow Athletics? Existing heats, registrations and results will be preserved.'))return;
+  const b=$('applyBtn');b.disabled=true;
+  try{
+    const batch='sheet_sync_'+new Date().toISOString();
+    for(let i=0;i<state.pending.length;i+=100){
+      const rows=state.pending.slice(i,i+100).map(x=>({...x,tournament_id:state.tournament.id,source_batch:batch}));
+      const {error}=await sb.from('athletics_athletes').upsert(rows,{onConflict:'tournament_id,external_code'});
+      if(error)throw error;
+      msg($('syncMsg'),'Syncing '+Math.min(i+100,state.pending.length)+' / '+state.pending.length+'…');
+    }
+    await loadRoster();
+    state.diff=null;state.pending=[];$('changePanel').classList.add('hidden');
+    $('rosterFile').value='';$('previewBtn').disabled=true;
+    msg($('syncMsg'),'Sync complete. Supabase roster updated successfully.','good');
+  }catch(e){msg($('syncMsg'),esc(e.message||String(e)),'bad')}
+  finally{b.disabled=false}
+}
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  $('userPill').textContent=session.user.email||'Admin';
+  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
+  if(error)throw error;state.tournament=t;await loadRoster();
+}
+async function signIn(){
+  const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+  if(error){msg($('loginMsg'),esc(error.message),'bad');return}boot();
+}
+async function signOut(){await sb.auth.signOut();location.reload()}
+$('loginBtn').onclick=signIn;$('logoutBtn').onclick=signOut;
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
+$('rosterFile').onchange=()=>{$('previewBtn').disabled=!$('rosterFile').files?.length;$('applyBtn').disabled=true;$('changePanel').classList.add('hidden')};
+$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
+if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+boot().catch(e=>alert(e.message||String(e)));
+</script>
+</body>
+</html>
