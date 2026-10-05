@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071d2d">
+<link rel="manifest" href="../manifest.webmanifest">
+<title>FieldFlow Athletics · Event Registration</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--navy:#071d2d;--navy2:#061722;--blue:#0b5fff;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--purple:#8b5cf6;--ink:#eaf3f8;--muted:#91a7b4;--line:#17384b;--card:#0b2638}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:linear-gradient(180deg,var(--navy2),#04121b 55%);color:var(--ink);min-height:100vh}
+button,input,select{font:inherit}.hidden{display:none!important}
+.shell{max-width:1800px;margin:auto;padding:16px}.topbar{display:flex;gap:14px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px}.mark{width:48px;height:48px;border-radius:13px;overflow:hidden;background:#000}.mark img{width:100%;height:100%;object-fit:cover}.brand h1{font-size:20px;margin:0}.sub{color:var(--muted);font-size:12px}
+.nav{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.nav a{color:#cfe1e9;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800}.nav a.active{background:var(--blue);border-color:var(--blue);color:white}
+.panel{background:rgba(11,38,56,.97);border:1px solid var(--line);border-radius:17px;box-shadow:0 14px 38px #0004;overflow:hidden}.pad{padding:14px}
+.filters{display:grid;grid-template-columns:150px 150px 170px minmax(240px,1fr) auto auto;gap:10px;align-items:end}
+.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+select,input[type=search]{width:100%;background:#061c2a;border:1px solid #21465a;color:var(--ink);border-radius:10px;padding:10px 11px;outline:none}
+.btn{border:1px solid #285067;border-radius:10px;padding:10px 12px;font-weight:800;background:#17384b;color:white;cursor:pointer;white-space:nowrap}.btn.primary{background:var(--blue);border-color:var(--blue)}.btn.good{background:#0b704f;border-color:#159970}.btn.ghost{background:transparent}.btn:disabled{opacity:.45;cursor:not-allowed}
+.statusbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}.pill{border:1px solid var(--line);background:#082232;border-radius:999px;padding:7px 10px;color:#c9dce4;font-size:11px}.pill.saved{color:#70f0bb;border-color:#1c7457}.pill.busy{color:#ffd08a;border-color:#77501c}
+.tablewrap{overflow:auto;max-height:calc(100vh - 250px);border-top:1px solid var(--line)}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{border-right:1px solid #dbe4e9;border-bottom:1px solid #dbe4e9;padding:8px 9px;font-size:12px;text-align:center;background:#fff;color:#17232b}
+thead th{position:sticky;top:0;z-index:5;background:#0d3850;color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.04em;min-width:74px}
+thead th.event.track{background:#0b5fff}.event.fieldcol{background:#087856}.event.relay{background:#7250db}
+th.identity,td.identity{position:sticky;z-index:4;text-align:left}.athlete-no{left:0;width:42px;min-width:42px}.athlete-id{left:42px;width:72px;min-width:72px}.athlete-surname{left:114px;width:140px;min-width:140px}.athlete-name{left:254px;width:140px;min-width:140px}
+thead th.identity{z-index:8;background:#0d3850}.identity:nth-child(n){box-shadow:1px 0 0 #294d61}
+td.identity{background:#f8fbfc}
+tbody tr:hover td{background:#f0f7fb}tbody tr:hover td.identity{background:#eaf3f8}
+.check{width:22px;height:22px;accent-color:#0b5fff;cursor:pointer}.check:disabled{cursor:not-allowed;opacity:.4}
+.count{display:block;font-size:10px;margin-top:4px;opacity:.9}.event-name{font-weight:900;white-space:nowrap}
+tfoot td{position:sticky;bottom:0;background:#eaf3f8;font-weight:900;color:#0d2633;z-index:3}tfoot td.identity{z-index:6}
+.empty{padding:42px;text-align:center;color:var(--muted)}
+.message{padding:10px 12px;border-radius:11px;margin:8px 0;background:#082434;border:1px solid var(--line);font-size:12px}.message.bad{border-color:#7a2e35;color:#ffaaaa}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}.sw{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px}.sw.track{background:#0b5fff}.sw.field{background:#087856}.sw.relay{background:#7250db}
+.printhead{display:none}
+.login{max-width:420px;margin:10vh auto}.login .panel{padding:22px}.login input{width:100%;margin:6px 0 10px;background:#061c2a;border:1px solid #21465a;color:white;border-radius:10px;padding:11px}
+@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}.tablewrap{max-height:calc(100vh - 330px)}}
+@media print{
+  @page{size:A4 landscape;margin:8mm}
+  body{background:white;color:#111}.topbar,.filters,.statusbar,.legend,.login{display:none!important}.shell{padding:0;max-width:none}.panel{border:0;box-shadow:none;border-radius:0;background:white}.pad{padding:0}.printhead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:8mm;color:#111}.printbrand{display:flex;gap:10px;align-items:center}.printbrand img{width:58px;height:58px;border-radius:10px;object-fit:cover;background:#000}.printbrand h1{font-size:20px;margin:0}.printmeta{font-size:11px;line-height:1.5;text-align:right}
+  .tablewrap{overflow:visible;max-height:none;border:0}table{width:100%;min-width:0;table-layout:fixed;border-collapse:collapse}th,td{font-size:8px;padding:3px 2px;border:1px solid #9aa7ad!important}.athlete-no{width:22px!important}.athlete-id{width:44px!important}.athlete-surname,.athlete-name{width:90px!important}
+  th.identity,td.identity,thead th,tfoot td{position:static!important;box-shadow:none!important}.event-name{white-space:normal;font-size:7px}.count{font-size:7px}.check{appearance:none;width:auto;height:auto}.check:checked:after{content:"✓";font-weight:900;font-size:12px;color:#000}.check:not(:checked):after{content:""}.check:disabled{opacity:1}.relaynote{display:none}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div>
+      <div class="brand"><div class="mark"><img src="../icons/icon-192.png" alt="FF Athletics"></div><div><h1>Event Registration</h1><div class="sub">Athlete × event registration matrix</div></div></div>
+      <div class="nav"><a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a class="active" href="./">Entries</a><a href="../print/" target="_blank">Print</a></div>
+    </div>
+    <div><span id="userPill" class="pill"></span></div>
+  </div>
+
+  <div id="loginView" class="login hidden">
+    <div class="panel"><h1>Admin login</h1><div class="sub">Sign in to manage event registrations.</div>
+      <label>Email</label><input id="email" type="email" autocomplete="username">
+      <label>Password</label><input id="password" type="password" autocomplete="current-password">
+      <button id="loginBtn" class="btn primary" style="width:100%">Login</button><div id="loginMsg"></div>
+    </div>
+  </div>
+
+  <div id="appView" class="panel hidden">
+    <div class="pad">
+      <div class="printhead">
+        <div class="printbrand"><img src="../icons/icon-192.png"><div><h1>Event Registration Sheet</h1><b>Intercolour Athletics 2026</b><div>Craighouse School</div></div></div>
+        <div class="printmeta" id="printMeta"></div>
+      </div>
+
+      <div class="filters">
+        <div class="field"><label>Level</label><select id="level"></select></div>
+        <div class="field"><label>Gender</label><select id="gender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
+        <div class="field"><label>Colour</label><select id="color"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
+        <div class="field wide"><label>Search athlete</label><input id="search" type="search" placeholder="Name, surname or athlete ID…"></div>
+        <button id="clearAllBtn" class="btn ghost">Clear visible</button>
+        <button id="printBtn" class="btn primary">Print</button>
+      </div>
+      <div class="statusbar">
+        <span id="saveStatus" class="pill saved">Auto-save ON</span>
+        <span id="athleteCount" class="pill">0 athletes</span>
+        <span id="eventCount" class="pill">0 events</span>
+        <span class="pill relaynote">Relays are displayed for reference and managed separately.</span>
+      </div>
+      <div class="legend"><span><i class="sw track"></i>Track</span><span><i class="sw field"></i>Field</span><span><i class="sw relay"></i>Relay</span></div>
+    </div>
+    <div id="matrixWrap" class="tablewrap"><div class="empty">Loading registration matrix…</div></div>
+  </div>
+</div>
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const state={tournament:null,events:[],athletes:[],registrations:[],busy:new Set()};
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+esc(text)+'</div>'}
+function genderName(g){return g==='F'?'Girls':'Boys'}
+function eventClass(e){return e.discipline==='relay'?'relay':(e.discipline==='field'?'fieldcol':'track')}
+function eventLabel(e){return e.name||e.code||'Event'}
+function currentEvents(){const l=$('level').value,g=$('gender').value;return state.events.filter(e=>e.category===l&&e.gender===g).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0))}
+function currentAthletes(){const l=$('level').value,g=$('gender').value,c=$('color').value,q=$('search').value.trim().toLowerCase();return state.athletes.filter(a=>a.active&&a.level===l&&a.gender===g&&a.color===c&&(!q||[a.external_code,a.last_name,a.first_name].some(v=>String(v||'').toLowerCase().includes(q)))).sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||'','es'))}
+function regMap(){return new Map(state.registrations.map(r=>[r.athlete_id+'|'+r.event_id,r]))}
+function render(){
+  const ev=currentEvents(),ath=currentAthletes(),map=regMap();
+  $('athleteCount').textContent=ath.length+' athletes';$('eventCount').textContent=ev.length+' events';
+  $('printMeta').innerHTML='<b>Level:</b> '+esc($('level').value)+'<br><b>Gender:</b> '+esc(genderName($('gender').value))+'<br><b>Colour:</b> '+esc($('color').value)+'<br><b>Printed:</b> '+new Date().toLocaleString();
+  if(!ev.length||!ath.length){$('matrixWrap').innerHTML='<div class="empty">No athletes or events for this selection.</div>';return}
+  const head=ev.map(e=>'<th class="event '+eventClass(e)+'"><span class="event-name">'+esc(eventLabel(e))+'</span><span class="count">('+state.registrations.filter(r=>r.event_id===e.id&&ath.some(a=>a.id===r.athlete_id)).length+')</span></th>').join('');
+  const rows=ath.map((a,i)=>'<tr>'+
+    '<td class="identity athlete-no">'+(i+1)+'</td><td class="identity athlete-id">'+esc(a.external_code)+'</td><td class="identity athlete-surname">'+esc(a.last_name)+'</td><td class="identity athlete-name">'+esc(a.first_name)+'</td>'+
+    ev.map(e=>{const key=a.id+'|'+e.id,checked=map.has(key),disabled=e.discipline==='relay'||state.busy.has(key);return '<td><input class="check" type="checkbox" data-athlete="'+a.id+'" data-event="'+e.id+'" '+(checked?'checked ':'')+(disabled?'disabled ':'')+'aria-label="'+esc(a.first_name+' '+a.last_name+' '+eventLabel(e))+'"></td>'}).join('')+
+    '</tr>').join('');
+  const foot=ev.map(e=>'<td>'+state.registrations.filter(r=>r.event_id===e.id&&ath.some(a=>a.id===r.athlete_id)).length+'</td>').join('');
+  $('matrixWrap').innerHTML='<table><thead><tr><th class="identity athlete-no">#</th><th class="identity athlete-id">ID</th><th class="identity athlete-surname">Surname</th><th class="identity athlete-name">Name</th>'+head+'</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td class="identity athlete-no"></td><td class="identity athlete-id"></td><td class="identity athlete-surname"></td><td class="identity athlete-name">Total entries</td>'+foot+'</tr></tfoot></table>';
+  document.querySelectorAll('.check').forEach(x=>x.onchange=()=>toggleRegistration(x));
+}
+async function toggleRegistration(el){
+  const athleteId=el.dataset.athlete,eventId=el.dataset.event,key=athleteId+'|'+eventId;
+  if(state.busy.has(key))return;state.busy.add(key);el.disabled=true;
+  $('saveStatus').textContent='Saving…';$('saveStatus').className='pill busy';
+  const existing=state.registrations.find(r=>r.athlete_id===athleteId&&r.event_id===eventId);
+  try{
+    if(el.checked&&!existing){
+      const {data,error}=await sb.from('athletics_registrations').insert({tournament_id:state.tournament.id,event_id:eventId,athlete_id:athleteId,status:'registered'}).select().single();
+      if(error)throw error;state.registrations.push(data);
+    }else if(!el.checked&&existing){
+      const {error}=await sb.from('athletics_registrations').delete().eq('id',existing.id);if(error)throw error;
+      state.registrations=state.registrations.filter(r=>r.id!==existing.id);
+    }
+    $('saveStatus').textContent='Saved';$('saveStatus').className='pill saved';
+  }catch(e){el.checked=!el.checked;alert('Could not save: '+(e.message||String(e)));$('saveStatus').textContent='Save error';$('saveStatus').className='pill'}
+  finally{state.busy.delete(key);render();setTimeout(()=>{$('saveStatus').textContent='Auto-save ON';$('saveStatus').className='pill saved'},900)}
+}
+async function clearVisible(){
+  const ath=currentAthletes(),ev=currentEvents().filter(e=>e.discipline!=='relay');
+  const aids=new Set(ath.map(a=>a.id)),eids=new Set(ev.map(e=>e.id));
+  const regs=state.registrations.filter(r=>aids.has(r.athlete_id)&&eids.has(r.event_id));
+  if(!regs.length)return;if(!confirm('Clear '+regs.length+' visible registrations?'))return;
+  $('saveStatus').textContent='Clearing…';$('saveStatus').className='pill busy';
+  for(const r of regs){const {error}=await sb.from('athletics_registrations').delete().eq('id',r.id);if(error){alert(error.message);break}state.registrations=state.registrations.filter(x=>x.id!==r.id)}
+  $('saveStatus').textContent='Auto-save ON';$('saveStatus').className='pill saved';render();
+}
+async function reloadData(){
+  const [a,e,r]=await Promise.all([
+    sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).eq('active',true),
+    sb.from('athletics_events').select('*').eq('tournament_id',state.tournament.id),
+    sb.from('athletics_registrations').select('*').eq('tournament_id',state.tournament.id)
+  ]);
+  if(a.error||e.error||r.error)throw (a.error||e.error||r.error);
+  state.athletes=a.data||[];state.events=e.data||[];state.registrations=r.data||[];render();
+}
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;
+  $('level').innerHTML=['Y5','Y6','Y7','Y8','Intermediate','Senior'].map(x=>'<option>'+x+'</option>').join('');
+  const qp=new URLSearchParams(location.search);if(qp.get('level'))$('level').value=qp.get('level');if(['M','F'].includes(qp.get('gender'))) $('gender').value=qp.get('gender');if(['Blue','Red','White','Green'].includes(qp.get('color'))) $('color').value=qp.get('color');
+  await reloadData();
+  if(qp.get('print')==='1')setTimeout(()=>window.print(),400);
+}
+async function signIn(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),error.message,'bad');return}boot()}
+$('loginBtn').onclick=signIn;$('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
+['level','gender','color'].forEach(id=>$(id).onchange=render);$('search').oninput=render;$('clearAllBtn').onclick=clearVisible;$('printBtn').onclick=()=>window.print();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+boot().catch(e=>alert(e.message||String(e)));
+</script>
+</body>
+</html>
