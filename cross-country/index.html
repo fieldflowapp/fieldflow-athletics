@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=13">
+<link rel="manifest" href="../manifest.webmanifest?v=14">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v13</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v14</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -236,7 +236,7 @@ function statusFor(id){
 function renderAttendance(){
   const list=currentAttList();let p=0,a=0,u=0;
   for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
-  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Database',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Live database',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
   $('selectHeader').classList.toggle('hidden',!state.selectionMode);document.querySelector('.attendanceTable')?.classList.toggle('selection-on',state.selectionMode);
   $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id),sel=state.selectedAthletes.has(x.id);return '<tr>'+(state.selectionMode?'<td class="selectCol col-select"><input class="selectBox" type="checkbox" data-select-athlete="'+x.id+'" '+(sel?'checked':'')+'></td>':'')+'<td class="col-surname">'+esc(x.last_name)+'</td><td class="col-name">'+esc(x.first_name)+'</td><td class="col-colour" title="'+esc(x.color)+'"><span class="dot '+esc(x.color)+'"></span></td><td class="col-status"><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
   document.querySelectorAll('[data-select-athlete]').forEach(el=>el.onchange=()=>{if(el.checked)state.selectedAthletes.add(el.dataset.selectAthlete);else state.selectedAthletes.delete(el.dataset.selectAthlete);updateSelectionUI()});
@@ -360,21 +360,25 @@ async function renderStandings(){
 function setTab(t){state.tab=t;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(const x of ['attendance','results','standings'])$(x+'Pane').classList.toggle('hidden',x!==t);if(t==='standings')renderStandings()}
 
 async function boot(){
-  const {data:{session}}=await sb.auth.getSession();
+  const {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
   if(!session){
-    state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
-    const {data:r,error}=await sb.from('athletics_cross_country_races').select('*').eq('tournament_id',TOURNAMENT_ID).order('level').order('gender');
-    if(error)throw error;
-    state.races=r||[];
-    $('userPill').textContent='Public';
-    $('loginView').classList.remove('hidden');$('appView').classList.remove('hidden');
-    document.querySelector('[data-tab="attendance"]').classList.add('hidden');
-    document.querySelector('[data-tab="results"]').classList.add('hidden');
-    setTab('standings');
+    $('userPill').textContent='Sign in';
+    $('loginView').classList.remove('hidden');
+    $('appView').classList.add('hidden');
+    $('logoutBtn').classList.add('hidden');
+    msg($('loginMsg'),'Sign in to load the live Athletics database.','');
     return;
   }
-  $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;await loadAll();
+  $('logoutBtn').classList.remove('hidden');
+  $('userPill').textContent=session.user.email||'Admin';
+  $('loginView').classList.add('hidden');
+  $('appView').classList.remove('hidden');
+  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
+  if(error)throw error;
+  state.tournament=t;
+  await loadAll();
+  $('userPill').textContent=(session.user.email||'Admin')+' · LIVE DB';
 }
 async function login(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),esc(error.message),'badmsg');return}boot()}
 $('loginBtn').onclick=login;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
@@ -423,7 +427,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=13',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=14',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
