@@ -179,7 +179,14 @@ async function syncGoogleSheet(){
     await loadRoster();
     msg($('sheetSyncMsg'),'Sync complete: '+(data.imported??0)+' athletes processed.','good');
   }catch(e){
-    msg($('sheetSyncMsg'),esc(e.message||String(e)),'bad');
+    let detail=e.message||String(e);
+    try{
+      if(e.context){
+        const j=await e.context.json();
+        detail=j?.error||j?.message||JSON.stringify(j);
+      }
+    }catch(_){}
+    msg($('sheetSyncMsg'),esc(detail),'bad');
   }finally{b.disabled=false}
 }
 async function previewFile(){
