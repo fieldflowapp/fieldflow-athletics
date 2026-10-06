@@ -19,12 +19,12 @@
 .filters{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:5px}select,input{width:100%;background:#071d2d;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
 .btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0d2a3a;color:#fff;font-weight:800;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue)}.btn.good{background:#0d5f4a;border-color:#148566}.btn.bad{background:#64252b;border-color:#9d3942}.btn.warn{background:#815816;border-color:#a87926}.btn:disabled{opacity:.45}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.stat{background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
-.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;font-size:12px;min-width:720px}.table th,.table td{padding:9px;border-bottom:1px solid #173747;text-align:left;white-space:nowrap}.table th{position:sticky;top:0;background:#0b2230;z-index:2;color:#bcd0d9;font-size:10px;text-transform:uppercase}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}.table th,.table td{padding:9px;border-bottom:1px solid #173747;text-align:left;white-space:nowrap}.table th{position:sticky;top:0;background:#0b2230;z-index:2;color:#bcd0d9;font-size:10px;text-transform:uppercase}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.Blue{background:#0b5fff}.Red{background:#ff4d4d}.White{background:#fff;border:1px solid #8da0aa}.Green{background:#18d39e}
 .statusBtns{display:flex;gap:6px}.statusBtns button{min-width:44px;padding:7px 9px}.onP{background:#0d5f4a;border-color:#18d39e}.onA{background:#64252b;border-color:#ff4d4d}.unset{opacity:.55}
 .message{border:1px solid var(--line);border-radius:11px;padding:10px;font-size:12px;margin:9px 0;background:#081c28}.goodmsg{border-color:#1d8b6e}.badmsg{border-color:#a33b46}.warnmsg{border-color:#9a6b20}.race{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}.racehead{padding:10px 12px;background:#082434;display:flex;justify-content:space-between;gap:10px;align-items:center}.racebody{padding:10px}.scoregrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.score{border:1px solid var(--line);border-radius:11px;padding:9px;background:#071d2d}.score b{font-size:17px}.score small{display:block;color:var(--muted);margin-top:3px}.rank1{outline:2px solid var(--green)}
 .login{max-width:430px;margin:60px auto}.position{width:88px}.muted{color:var(--muted)}
-@media(max-width:760px){.topbar{position:relative;flex-direction:column}.tabs{top:0}.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}.scoregrid{grid-template-columns:1fr 1fr}.wrap{padding:8px}.table{min-width:650px}.nav{gap:5px}.nav a{padding:7px 8px;font-size:11px}}
+@media(max-width:760px){.topbar{position:relative;flex-direction:column}.tabs{top:0}.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}.scoregrid{grid-template-columns:1fr 1fr}.wrap{padding:8px}.table{min-width:520px}.nav{gap:5px}.nav a{padding:7px 8px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -55,20 +55,21 @@
 
     <section id="attendancePane" class="pad">
       <div class="filters">
-        <div class="field"><label>Year</label><select id="attLevel"></select></div>
+        <div class="field"><label>Category</label><select id="attLevel"></select></div>
         <div class="field"><label>Gender</label><select id="attGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
         <div class="field"><label>Colour</label><select id="attColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div class="stats" id="attStats"></div>
       <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div>
       <div id="attMsg"></div>
-      <div class="tablewrap"><table class="table"><thead><tr><th>ID</th><th>Surname</th><th>Name</th><th>Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th>Surname</th><th>Name</th><th>Colour</th><th>Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
     </section>
 
     <section id="resultsPane" class="pad hidden">
-      <div class="filters" style="grid-template-columns:1fr 1fr">
-        <div class="field"><label>Year</label><select id="resLevel"></select></div>
+      <div class="filters">
+        <div class="field"><label>Category</label><select id="resLevel"></select></div>
         <div class="field"><label>Gender</label><select id="resGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
+        <div class="field"><label>Colour</label><select id="resColor"><option value="All">All colours</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div id="raceState" class="message"></div>
       <div class="row" style="margin-bottom:10px"><button class="btn primary" id="saveResults">Save finish order</button><button class="btn" id="autoNumber">Auto-number empty rows</button></div>
@@ -135,7 +136,7 @@ function renderAttendance(){
   const list=currentAttList();let p=0,a=0,u=0;
   for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
   $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Not marked',u]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
-  $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id);return '<tr><td>'+esc(x.external_code)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
+  $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id);return '<tr><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
 }
 window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
 
@@ -153,8 +154,8 @@ async function saveAttendance(){
 }
 
 function currentRace(){
-  const L=$('resLevel').value,G=$('resGender').value,am=aMap();
-  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&am.get(x.id)===true);
+  const L=$('resLevel').value,G=$('resGender').value,C=$('resColor').value,am=aMap();
+  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&am.get(x.id)===true&&(C==='All'||x.color===C));
 }
 function renderResults(){
   if(!state.tournament)return;
@@ -224,7 +225,7 @@ $('loginBtn').onclick=login;$('logoutBtn').onclick=async()=>{await sb.auth.signO
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
 ['attLevel','attGender','attColor'].forEach(id=>$(id).onchange=renderAttendance);
-['resLevel','resGender'].forEach(id=>$(id).onchange=renderResults);
+['resLevel','resGender','resColor'].forEach(id=>$(id).onchange=renderResults);
 $('allPresent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,true));renderAttendance()};
 $('allAbsent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,false));renderAttendance()};
 $('saveAttendance').onclick=saveAttendance;$('saveResults').onclick=saveResults;
