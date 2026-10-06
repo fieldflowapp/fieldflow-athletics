@@ -203,7 +203,7 @@ async function boot(){
 async function signIn(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),error.message,'bad');return}boot()}
 $('loginBtn').onclick=signIn;$('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 ['level','gender','color'].forEach(id=>$(id).onchange=render);$('search').oninput=render;$('clearAllBtn').onclick=clearVisible;$('printBtn').onclick=()=>window.print();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+
 boot().catch(e=>alert(e.message||String(e)));
 </script>
 
@@ -222,5 +222,27 @@ boot().catch(e=>alert(e.message||String(e)));
   document.getElementById('iosInstallLater')?.addEventListener('click',close);
 })();
 </script>
+
+<script>
+(function ffPwaAutoUpdate(){
+  if(!('serviceWorker' in navigator))return;
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  async function check(){
+    try{
+      const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
+      await reg.update();
+    }catch(e){console.error('PWA update check failed',e)}
+  }
+  window.addEventListener('load',check);
+  window.addEventListener('focus',check);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
+})();
+</script>
+
 </body>
 </html>
