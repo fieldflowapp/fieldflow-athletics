@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=15">
+<link rel="manifest" href="../manifest.webmanifest?v=16">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v15</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v16</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -444,7 +444,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=15',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=16',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
