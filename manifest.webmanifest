@@ -3,7 +3,7 @@
   "short_name": "FF Athletics",
   "description": "FieldFlow Athletics Admin",
   "id": "/fieldflow-athletics/?app=athletics-v3",
-  "start_url": "/fieldflow-athletics/?app=athletics-v3",
+  "start_url": "/fieldflow-athletics/?app=athletics-v3&build=12",
   "scope": "/fieldflow-athletics/",
   "display": "standalone",
   "orientation": "any",
