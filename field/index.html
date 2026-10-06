@@ -91,7 +91,7 @@
 @media(max-width:560px){.modalgrid{grid-template-columns:1fr}.modalcard{max-height:92vh;overflow:auto}}
 </style>
 
-  <link rel="manifest" href="../manifest.webmanifest?v=15">
+  <link rel="manifest" href="../manifest.webmanifest?v=16">
   <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -362,10 +362,13 @@ function renderRegistrations(){
   const p=$('registrationsPane'),e=state.currentEvent;if(!e){p.innerHTML='<div class="empty">Select an event.</div>';return}
   const colour=$('colour').value,visible=colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour),reg=regSet();
   p.innerHTML='<div class="toolbar"><button class="btn primary" id="saveRegs">Save changes</button><span class="muted">TEST MODE: unlimited athletes per colour and event.</span></div>'+
+  '<div class="student-search"><input id="studentSearch" type="search" placeholder="Search student by surname, name or ID" autocomplete="off"></div>'+
   '<div class="tablewrap"><table><thead><tr><th>In</th><th>Athlete</th><th>Colour</th><th>Category</th></tr></thead><tbody>'+
-  visible.map(a=>{const eligible=a.gender===e.gender;return '<tr><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+' '+(!eligible?'disabled':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+(eligible?'':' · View only')+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>'}).join('')+
+  visible.map(a=>{const eligible=a.gender===e.gender,search=(a.last_name+' '+a.first_name+' '+(a.external_code||'')+' '+a.color+' '+a.level+' '+a.gender).toLowerCase();return '<tr data-student-search="'+esc(search)+'"><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+' '+(!eligible?'disabled':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+(eligible?'':' · View only')+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>'}).join('')+
   '</tbody></table></div><div id="regMsg"></div>';
   $('saveRegs').onclick=saveRegistrations;
+  const search=$('studentSearch');
+  if(search)search.oninput=()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('#registrationsPane [data-student-search]').forEach(row=>row.classList.toggle('hidden',q&&!row.dataset.studentSearch.includes(q)))};
 }
 async function saveRegistrations(){
   const selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id),existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
@@ -560,7 +563,7 @@ wire();boot();
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=15',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=16',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
