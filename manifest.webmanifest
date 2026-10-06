@@ -3,7 +3,7 @@
   "short_name": "FF Athletics",
   "description": "FieldFlow Athletics Admin",
   "id": "/fieldflow-athletics/?app=athletics-v3",
-  "start_url": "/fieldflow-athletics/?app=athletics-v3&build=18",
+  "start_url": "/fieldflow-athletics/?app=athletics-v3&build=19",
   "scope": "/fieldflow-athletics/",
   "display": "standalone",
   "orientation": "any",
@@ -11,7 +11,7 @@
   "theme_color": "#071d2d",
   "icons": [
     {
-      "src": "/fieldflow-athletics/icons/icon-192.png?v=18",
+      "src": "/fieldflow-athletics/icons/icon-192.png?v=19",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
