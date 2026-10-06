@@ -57,7 +57,10 @@ input,select,button{font:inherit}.input,input[type=file]{width:100%;background:#
       </div>
 
       <h2 style="margin-top:20px">Sync roster</h2>
-      <div class="sub">1. Edit the Sheet. 2. Download CSV. 3. Select it here. 4. Preview and apply.</div>
+      <div class="sub">Edit the Google Sheet and sync it directly with Supabase.</div>
+      <button class="btn good" id="sheetSyncBtn" style="width:100%;margin-top:10px">Sync Google Sheet now</button>
+      <div id="sheetSyncMsg"></div>
+      <div class="sub" style="margin-top:12px">CSV fallback</div>
       <div class="field"><label>Students CSV</label><input id="rosterFile" type="file" accept=".csv,text/csv"></div>
       <div id="previewMsg" class="message">No file selected.</div>
       <button class="btn primary" id="previewBtn" disabled style="width:100%;margin-top:8px">Preview changes</button>
@@ -166,6 +169,19 @@ async function loadRoster(){
   state.athletes=data||[];renderRoster();
   $('lastRefresh').textContent='Updated '+new Date().toLocaleTimeString();
 }
+async function syncGoogleSheet(){
+  const b=$('sheetSyncBtn');b.disabled=true;
+  try{
+    msg($('sheetSyncMsg'),'Connecting Google Sheets and Supabase…');
+    const {data,error}=await sb.functions.invoke('athletics-roster-sync',{body:{action:'pull_sheet'}});
+    if(error)throw error;
+    if(!data?.ok)throw new Error(data?.error||'Sync failed');
+    await loadRoster();
+    msg($('sheetSyncMsg'),'Sync complete: '+(data.imported??0)+' athletes processed.','good');
+  }catch(e){
+    msg($('sheetSyncMsg'),esc(e.message||String(e)),'bad');
+  }finally{b.disabled=false}
+}
 async function previewFile(){
   try{
     const f=$('rosterFile').files?.[0];if(!f)return;
@@ -213,7 +229,7 @@ async function signOut(){await sb.auth.signOut();location.reload()}
 $('loginBtn').onclick=signIn;$('logoutBtn').onclick=signOut;
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 $('rosterFile').onchange=()=>{$('previewBtn').disabled=!$('rosterFile').files?.length;$('applyBtn').disabled=true;$('changePanel').classList.add('hidden')};
-$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
+$('sheetSyncBtn').onclick=syncGoogleSheet;$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
 boot().catch(e=>alert(e.message||String(e)));
 </script>
