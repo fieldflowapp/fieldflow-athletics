@@ -32,7 +32,7 @@
   <div>
     <div class="brand"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"><div><h1>FieldFlow Athletics</h1><div class="sub">Cross Country Intercolour</div></div></div>
     <div class="nav">
-      <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a class="active" href="./">Cross Country</a><a href="../print/" target="_blank">Print</a>
+      <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
   <div class="row"><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
@@ -91,13 +91,13 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const LEVELS=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
 const COLORS=['Blue','Red','White','Green'];
-let state={tournament:null,athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
+let state={tournament:null,races:[],athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+text+'</div>'}
 function raceKey(level,gender){return level+'|'+gender}
-function aMap(){return new Map(state.attendance.map(x=>[x.athlete_id,x.present]))}
-function rMap(){return new Map(state.results.map(x=>[x.athlete_id,x.position]))}
+function aMap(){return new Map(state.attendance.map(x=>[x.athlete_id,x.status==='present']))}
+function rMap(){return new Map(state.results.filter(x=>x.result_status==='finished').map(x=>[x.athlete_id,x.finish_position]))}
 function activeAthletes(){return state.athletes.filter(x=>x.active)}
 
 function fillLevels(){
@@ -105,13 +105,14 @@ function fillLevels(){
 }
 async function loadAll(){
   const tid=state.tournament.id;
-  const [a,att,res]=await Promise.all([
+  const [rr,a,att,res]=await Promise.all([
+    sb.from('athletics_cross_country_races').select('*').eq('tournament_id',tid).order('level').order('gender'),
     sb.from('athletics_athletes').select('id,external_code,last_name,first_name,gender,level,color,active').eq('tournament_id',tid).order('last_name'),
     sb.from('athletics_cross_country_attendance').select('*').eq('tournament_id',tid),
     sb.from('athletics_cross_country_results').select('*').eq('tournament_id',tid)
   ]);
-  if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
-  state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
+  if(rr.error)throw rr.error;if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
+  state.races=rr.data||[];state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
   state.pendingAttendance.clear();renderAll();
 }
 function renderAll(){renderAttendance();renderResults();renderStandings()}
@@ -133,11 +134,16 @@ function renderAttendance(){
 window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
 
 async function saveAttendance(){
-  const list=currentAttList(),rows=list.filter(x=>state.pendingAttendance.has(x.id)).map(x=>({tournament_id:state.tournament.id,athlete_id:x.id,present:state.pendingAttendance.get(x.id),marked_at:new Date().toISOString()}));
-  if(!rows.length){msg($('attMsg'),'No attendance changes to save.','warnmsg');return}
-  const {error}=await sb.from('athletics_cross_country_attendance').upsert(rows,{onConflict:'tournament_id,athlete_id'});
+  const race=state.races.find(r=>r.level===$('attLevel').value&&r.gender===$('attGender').value);
+  if(!race){msg($('attMsg'),'Race not found.','badmsg');return}
+  const list=currentAttList();
+  const current=new Map(state.attendance.filter(x=>x.race_id===race.id).map(x=>[x.athlete_id,x.status==='present']));
+  const presentIds=list.filter(x=>state.pendingAttendance.has(x.id)?state.pendingAttendance.get(x.id):current.get(x.id)===true).map(x=>x.id);
+  $('saveAttendance').disabled=true;
+  const {data,error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:$('attColor').value,p_present_ids:presentIds});
+  $('saveAttendance').disabled=false;
   if(error){msg($('attMsg'),esc(error.message),'badmsg');return}
-  msg($('attMsg'),'Attendance saved: '+rows.length+' students.','goodmsg');await loadAll();
+  msg($('attMsg'),'Attendance saved · '+data.present+' present.','goodmsg');await loadAll();
 }
 
 function currentRace(){
@@ -148,40 +154,44 @@ function renderResults(){
   if(!state.tournament)return;
   const list=currentRace().sort((a,b)=>{const pa=rMap().get(a.id),pb=rMap().get(b.id);if(pa&&pb)return pa-pb;if(pa)return-1;if(pb)return 1;return (a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)});
   const rm=rMap(),finished=list.filter(x=>rm.has(x.id)).length,unmarked=list.length-finished;
-  $('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+'</b><br>Present: '+list.length+' · Finish places saved: '+finished+' · Pending: '+unmarked+(unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'<br><b>Race complete.</b>');
+  const race=state.races.find(r=>r.level===$('resLevel').value&&r.gender===$('resGender').value);$('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+'</b><br>Status: '+esc((race?.status||'pending').replaceAll('_',' '))+' · Present: '+list.length+' · Finish places saved: '+finished+' · Pending: '+unmarked+(unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'<br><b>Race complete.</b>');
   $('resBody').innerHTML=list.map(x=>'<tr><td><input class="position" type="number" min="1" step="1" data-athlete="'+x.id+'" value="'+(rm.get(x.id)||'')+'"></td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td>'+(rm.has(x.id)?'Saved':'Pending')+'</td></tr>').join('');
 }
 async function saveResults(){
-  const level=$('resLevel').value,gender=$('resGender').value,key=raceKey(level,gender),inputs=[...document.querySelectorAll('#resBody .position')];
-  const rows=[];const used=new Set();
-  for(const i of inputs){const raw=i.value.trim();if(!raw)continue;const pos=Number(raw);if(!Number.isInteger(pos)||pos<1){msg($('resMsg'),'Every position must be a whole number greater than 0.','badmsg');return}if(used.has(pos)){msg($('resMsg'),'Duplicate place '+pos+'. Each finish place must be unique.','badmsg');return}used.add(pos);rows.push({tournament_id:state.tournament.id,athlete_id:i.dataset.athlete,race_key:key,level,gender,position:pos,recorded_at:new Date().toISOString()})}
-  const raceIds=new Set(currentRace().map(x=>x.id));
-  const old=state.results.filter(x=>x.race_key===key&&raceIds.has(x.athlete_id));
-  const keep=new Set(rows.map(x=>x.athlete_id));
-  const remove=old.filter(x=>!keep.has(x.athlete_id)).map(x=>x.id);
-  if(remove.length){const d=await sb.from('athletics_cross_country_results').delete().in('id',remove);if(d.error){msg($('resMsg'),esc(d.error.message),'badmsg');return}}
-  if(rows.length){const u=await sb.from('athletics_cross_country_results').upsert(rows,{onConflict:'tournament_id,athlete_id'});if(u.error){msg($('resMsg'),esc(u.error.message),'badmsg');return}}
+  const level=$('resLevel').value,gender=$('resGender').value;
+  const race=state.races.find(r=>r.level===level&&r.gender===gender);
+  if(!race){msg($('resMsg'),'Race not found.','badmsg');return}
+  const inputs=[...document.querySelectorAll('#resBody .position')];
+  const used=new Set();
+  for(const i of inputs){const raw=i.value.trim();if(!raw)continue;const pos=Number(raw);if(!Number.isInteger(pos)||pos<1){msg($('resMsg'),'Every position must be a whole number greater than 0.','badmsg');return}if(used.has(pos)){msg($('resMsg'),'Duplicate place '+pos+'. Each finish place must be unique.','badmsg');return}used.add(pos)}
+  $('saveResults').disabled=true;
+  for(const i of inputs){
+    const raw=i.value.trim(),pos=raw?Number(raw):null;
+    const old=state.results.find(x=>x.race_id===race.id&&x.athlete_id===i.dataset.athlete);
+    const oldPos=old?.finish_position??null;
+    if(pos===oldPos)continue;
+    const {error}=await sb.rpc('cross_country_save_finish',{p_race_id:race.id,p_athlete_id:i.dataset.athlete,p_position:pos});
+    if(error){$('saveResults').disabled=false;msg($('resMsg'),esc(error.message),'badmsg');return}
+  }
+  $('saveResults').disabled=false;
   msg($('resMsg'),'Finish order saved.','goodmsg');await loadAll();
 }
 
-function calcRace(level,gender){
-  const ath=activeAthletes().filter(x=>x.level===level&&x.gender===gender),am=aMap(),rm=rMap();
-  const present=ath.filter(x=>am.get(x.id)===true),marked=ath.filter(x=>am.has(x.id));
-  const counts=Object.fromEntries(COLORS.map(c=>[c,present.filter(x=>x.color===c).length]));
-  const target=Math.max(0,...Object.values(counts));
-  const positions=present.map(x=>rm.get(x.id)).filter(Boolean);
-  const last=positions.length?Math.max(...positions):0,ghostValue=last+1;
-  const complete=present.every(x=>rm.has(x.id)) && marked.length===ath.length;
-  const scores=COLORS.map(color=>{
-    const runners=present.filter(x=>x.color===color),real=runners.map(x=>rm.get(x.id)).filter(Boolean),ghosts=Math.max(0,target-runners.length);
-    return {color,present:runners.length,realTotal:real.reduce((s,n)=>s+n,0),ghosts,ghostValue,total:real.reduce((s,n)=>s+n,0)+ghosts*ghostValue,finished:real.length};
-  }).sort((a,b)=>a.total-b.total||COLORS.indexOf(a.color)-COLORS.indexOf(b.color));
-  return {level,gender,present:present.length,target,last,ghostValue,complete,scores};
-}
-function renderStandings(){
+async function renderStandings(){
   if(!state.tournament)return;
-  const races=[];for(const l of LEVELS)for(const g of ['F','M']){const r=calcRace(l,g);if(r.present||state.attendance.some(x=>{const a=state.athletes.find(y=>y.id===x.athlete_id);return a&&a.level===l&&a.gender===g}))races.push(r)}
-  $('standings').innerHTML=races.map(r=>'<div class="race"><div class="racehead"><div><b>'+esc(r.level)+' · '+(r.gender==='F'?'Girls':'Boys')+'</b><div class="sub">Target '+r.target+' · Ghost value '+r.ghostValue+'</div></div><span class="pill">'+(r.complete?'FINAL':'PROVISIONAL')+'</span></div><div class="racebody"><div class="scoregrid">'+r.scores.map((s,i)=>'<div class="score '+(i===0&&r.complete?'rank1':'')+'"><b><span class="dot '+s.color+'"></span>'+s.color+' · '+s.total+'</b><small>Present '+s.present+' · Finished '+s.finished+' · Ghosts '+s.ghosts+(s.ghosts?' × '+s.ghostValue:'')+'</small></div>').join('')+'</div></div></div>').join('')||'<div class="message">No Cross Country attendance has been recorded yet.</div>';
+  const races=state.races;
+  const blocks=[];
+  for(const r of races){
+    const {data,error}=await sb.rpc('cross_country_race_standings',{p_race_id:r.id});
+    if(error)continue;
+    const rows=data||[];
+    const anyActivity=rows.some(x=>Number(x.real_participants)>0)||r.status!=='pending';
+    if(!anyActivity)continue;
+    blocks.push('<div class="race"><div class="racehead"><div><b>'+esc(r.level)+' · '+(r.gender==='F'?'Girls':'Boys')+'</b><div class="sub">'+esc(r.status.replaceAll('_',' '))+'</div></div><span class="pill">'+(r.status==='completed'?'FINAL':'PROVISIONAL')+'</span></div><div class="racebody"><div class="scoregrid">'+rows.map((s,i)=>'<div class="score '+(i===0&&r.status==='completed'?'rank1':'')+'"><b><span class="dot '+s.color+'"></span>'+s.color+' · '+s.final_points+'</b><small>Real '+s.real_participants+' · Finished '+s.finished_participants+' · Ghosts '+s.ghost_runners+' × '+s.ghost_score+' · Real pts '+s.real_points+' · Ghost pts '+s.ghost_points+'</small></div>').join('')+'</div></div></div>');
+  }
+  const {data:overall}=await sb.rpc('cross_country_overall_standings',{p_tournament_id:state.tournament.id});
+  const summary=(overall||[]).map(x=>'<div class="score '+(Number(x.rank_no)===1&&Number(x.completed_races)>0?'rank1':'')+'"><b>#'+x.rank_no+' <span class="dot '+x.color+'"></span>'+x.color+' · '+x.total_points+'</b><small>Completed races '+x.completed_races+'</small></div>').join('');
+  $('standings').innerHTML='<div class="race"><div class="racehead"><b>General ranking</b><span class="pill">Completed races only</span></div><div class="racebody"><div class="scoregrid">'+summary+'</div></div></div>'+(blocks.join('')||'<div class="message">No Cross Country attendance has been recorded yet.</div>');
 }
 function setTab(t){state.tab=t;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(const x of ['attendance','results','standings'])$(x+'Pane').classList.toggle('hidden',x!==t);if(t==='standings')renderStandings()}
 
