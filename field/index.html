@@ -526,7 +526,7 @@ wire();boot();
 </script>
 
 <script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js').catch(console.error));}
+
 </script>
 
 <script>
@@ -544,5 +544,27 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.se
   document.getElementById('iosInstallLater')?.addEventListener('click',close);
 })();
 </script>
+
+<script>
+(function ffPwaAutoUpdate(){
+  if(!('serviceWorker' in navigator))return;
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  async function check(){
+    try{
+      const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
+      await reg.update();
+    }catch(e){console.error('PWA update check failed',e)}
+  }
+  window.addEventListener('load',check);
+  window.addEventListener('focus',check);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
+})();
+</script>
+
 </body>
 </html>
