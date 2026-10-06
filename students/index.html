@@ -293,7 +293,7 @@ $('loginBtn').onclick=signIn;$('logoutBtn').onclick=signOut;
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 $('rosterFile').onchange=()=>{$('previewBtn').disabled=!$('rosterFile').files?.length;$('applyBtn').disabled=true;$('changePanel').classList.add('hidden')};
 $('sheetSyncBtn').onclick=syncGoogleSheet;$('pushAllBtn').onclick=pushSupabaseToSheet;$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
-if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+
 boot().catch(e=>alert(e.message||String(e)));
 </script>
 
@@ -312,5 +312,27 @@ boot().catch(e=>alert(e.message||String(e)));
   document.getElementById('iosInstallLater')?.addEventListener('click',close);
 })();
 </script>
+
+<script>
+(function ffPwaAutoUpdate(){
+  if(!('serviceWorker' in navigator))return;
+  let refreshing=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+  async function check(){
+    try{
+      const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
+      await reg.update();
+    }catch(e){console.error('PWA update check failed',e)}
+  }
+  window.addEventListener('load',check);
+  window.addEventListener('focus',check);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')check()});
+})();
+</script>
+
 </body>
 </html>
