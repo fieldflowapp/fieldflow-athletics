@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071d2d">
+<link rel="manifest" href="../manifest.webmanifest?v=3">
+<title>FieldFlow Athletics · Cross Country</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#061722;--bg2:#071d2d;--panel:#0b2638;--line:#285067;--text:#eef8fc;--muted:#9db4bf;--blue:#0b5fff;--green:#18d39e;--red:#ff4d4d;--orange:#ff9f1c;--cyan:#12c8ff}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,var(--bg),#04121b);color:var(--text);font-family:Arial,Helvetica,sans-serif;min-height:100vh}button,input,select{font:inherit}.hidden{display:none!important}
+.topbar{position:sticky;top:0;z-index:50;background:#061722f5;border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:12px;justify-content:space-between;align-items:flex-start;backdrop-filter:blur(10px)}
+.brand{display:flex;gap:10px;align-items:center}.brand img{width:46px;height:46px;border-radius:11px;object-fit:cover}.brand h1{font-size:17px;margin:0}.sub{font-size:12px;color:var(--muted)}
+.nav{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.nav a{color:#d7e8f0;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800}.nav a.active{background:var(--blue);color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;color:#d8e8ef}
+.wrap{max-width:1280px;margin:auto;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}.pad{padding:14px}
+.tabs{display:flex;gap:7px;padding:10px;border-bottom:1px solid var(--line);background:#082231;position:sticky;top:82px;z-index:20}.tab{flex:1;border:1px solid var(--line);background:#0d2a3a;color:#fff;border-radius:10px;padding:10px;font-weight:800}.tab.active{background:var(--blue);border-color:var(--blue)}
+.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:10px}.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:5px}select,input{width:100%;background:#071d2d;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
+.btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0d2a3a;color:#fff;font-weight:800;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue)}.btn.good{background:#0d5f4a;border-color:#148566}.btn.bad{background:#64252b;border-color:#9d3942}.btn.warn{background:#815816;border-color:#a87926}.btn:disabled{opacity:.45}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.stat{background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;font-size:12px;min-width:720px}.table th,.table td{padding:9px;border-bottom:1px solid #173747;text-align:left;white-space:nowrap}.table th{position:sticky;top:0;background:#0b2230;z-index:2;color:#bcd0d9;font-size:10px;text-transform:uppercase}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.Blue{background:#0b5fff}.Red{background:#ff4d4d}.White{background:#fff;border:1px solid #8da0aa}.Green{background:#18d39e}
+.statusBtns{display:flex;gap:6px}.statusBtns button{min-width:44px;padding:7px 9px}.onP{background:#0d5f4a;border-color:#18d39e}.onA{background:#64252b;border-color:#ff4d4d}.unset{opacity:.55}
+.message{border:1px solid var(--line);border-radius:11px;padding:10px;font-size:12px;margin:9px 0;background:#081c28}.goodmsg{border-color:#1d8b6e}.badmsg{border-color:#a33b46}.warnmsg{border-color:#9a6b20}.race{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}.racehead{padding:10px 12px;background:#082434;display:flex;justify-content:space-between;gap:10px;align-items:center}.racebody{padding:10px}.scoregrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.score{border:1px solid var(--line);border-radius:11px;padding:9px;background:#071d2d}.score b{font-size:17px}.score small{display:block;color:var(--muted);margin-top:3px}.rank1{outline:2px solid var(--green)}
+.login{max-width:430px;margin:60px auto}.position{width:88px}.muted{color:var(--muted)}
+@media(max-width:760px){.topbar{position:relative;flex-direction:column}.tabs{top:0}.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}.scoregrid{grid-template-columns:1fr 1fr}.wrap{padding:8px}.table{min-width:650px}.nav{gap:5px}.nav a{padding:7px 8px;font-size:11px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div>
+    <div class="brand"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"><div><h1>FieldFlow Athletics</h1><div class="sub">Cross Country Intercolour</div></div></div>
+    <div class="nav">
+      <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a class="active" href="./">Cross Country</a><a href="../print/" target="_blank">Print</a>
+    </div>
+  </div>
+  <div class="row"><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+</div>
+
+<div class="wrap">
+  <div id="loginView" class="panel pad login hidden">
+    <h2>Admin login</h2>
+    <div class="field"><label>Email</label><input id="email" type="email" autocomplete="username"></div>
+    <div class="field" style="margin-top:10px"><label>Password</label><input id="password" type="password" autocomplete="current-password"></div>
+    <button class="btn primary" id="loginBtn" style="width:100%;margin-top:10px">Login</button><div id="loginMsg"></div>
+  </div>
+
+  <div id="appView" class="panel hidden">
+    <div class="tabs">
+      <button class="tab active" data-tab="attendance">Teachers · Attendance</button>
+      <button class="tab" data-tab="results">Admin · Finish Order</button>
+      <button class="tab" data-tab="standings">Standings</button>
+    </div>
+
+    <section id="attendancePane" class="pad">
+      <div class="filters">
+        <div class="field"><label>Year</label><select id="attLevel"></select></div>
+        <div class="field"><label>Gender</label><select id="attGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
+        <div class="field"><label>Colour</label><select id="attColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
+      </div>
+      <div class="stats" id="attStats"></div>
+      <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div>
+      <div id="attMsg"></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th>ID</th><th>Surname</th><th>Name</th><th>Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
+    </section>
+
+    <section id="resultsPane" class="pad hidden">
+      <div class="filters" style="grid-template-columns:1fr 1fr">
+        <div class="field"><label>Year</label><select id="resLevel"></select></div>
+        <div class="field"><label>Gender</label><select id="resGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
+      </div>
+      <div id="raceState" class="message"></div>
+      <div class="row" style="margin-bottom:10px"><button class="btn primary" id="saveResults">Save finish order</button><button class="btn" id="autoNumber">Auto-number empty rows</button></div>
+      <div id="resMsg"></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th>Place</th><th>Colour</th><th>Surname</th><th>Name</th><th>Status</th></tr></thead><tbody id="resBody"></tbody></table></div>
+    </section>
+
+    <section id="standingsPane" class="pad hidden">
+      <div class="message"><b>Scoring:</b> lower score wins. Target runners = highest attendance among colours. Missing runners are ghost runners worth last valid place + 1. Ghosts are calculated only; they are never stored as athletes.</div>
+      <div id="standings"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const LEVELS=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
+const COLORS=['Blue','Red','White','Green'];
+let state={tournament:null,athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
+
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+text+'</div>'}
+function raceKey(level,gender){return level+'|'+gender}
+function aMap(){return new Map(state.attendance.map(x=>[x.athlete_id,x.present]))}
+function rMap(){return new Map(state.results.map(x=>[x.athlete_id,x.position]))}
+function activeAthletes(){return state.athletes.filter(x=>x.active)}
+
+function fillLevels(){
+  for(const id of ['attLevel','resLevel']) $(id).innerHTML=LEVELS.map(x=>'<option>'+x+'</option>').join('');
+}
+async function loadAll(){
+  const tid=state.tournament.id;
+  const [a,att,res]=await Promise.all([
+    sb.from('athletics_athletes').select('id,external_code,last_name,first_name,gender,level,color,active').eq('tournament_id',tid).order('last_name'),
+    sb.from('athletics_cross_country_attendance').select('*').eq('tournament_id',tid),
+    sb.from('athletics_cross_country_results').select('*').eq('tournament_id',tid)
+  ]);
+  if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
+  state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
+  state.pendingAttendance.clear();renderAll();
+}
+function renderAll(){renderAttendance();renderResults();renderStandings()}
+
+function currentAttList(){
+  const L=$('attLevel').value,G=$('attGender').value,C=$('attColor').value;
+  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&x.color===C).sort((a,b)=>(a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name));
+}
+function statusFor(id){
+  if(state.pendingAttendance.has(id))return state.pendingAttendance.get(id);
+  const row=state.attendance.find(x=>x.athlete_id===id);return row?row.present:null;
+}
+function renderAttendance(){
+  const list=currentAttList();let p=0,a=0,u=0;
+  for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
+  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Not marked',u]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+  $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id);return '<tr><td>'+esc(x.external_code)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
+}
+window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
+
+async function saveAttendance(){
+  const list=currentAttList(),rows=list.filter(x=>state.pendingAttendance.has(x.id)).map(x=>({tournament_id:state.tournament.id,athlete_id:x.id,present:state.pendingAttendance.get(x.id),marked_at:new Date().toISOString()}));
+  if(!rows.length){msg($('attMsg'),'No attendance changes to save.','warnmsg');return}
+  const {error}=await sb.from('athletics_cross_country_attendance').upsert(rows,{onConflict:'tournament_id,athlete_id'});
+  if(error){msg($('attMsg'),esc(error.message),'badmsg');return}
+  msg($('attMsg'),'Attendance saved: '+rows.length+' students.','goodmsg');await loadAll();
+}
+
+function currentRace(){
+  const L=$('resLevel').value,G=$('resGender').value,am=aMap();
+  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&am.get(x.id)===true);
+}
+function renderResults(){
+  if(!state.tournament)return;
+  const list=currentRace().sort((a,b)=>{const pa=rMap().get(a.id),pb=rMap().get(b.id);if(pa&&pb)return pa-pb;if(pa)return-1;if(pb)return 1;return (a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)});
+  const rm=rMap(),finished=list.filter(x=>rm.has(x.id)).length,unmarked=list.length-finished;
+  $('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+'</b><br>Present: '+list.length+' · Finish places saved: '+finished+' · Pending: '+unmarked+(unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'<br><b>Race complete.</b>');
+  $('resBody').innerHTML=list.map(x=>'<tr><td><input class="position" type="number" min="1" step="1" data-athlete="'+x.id+'" value="'+(rm.get(x.id)||'')+'"></td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td>'+(rm.has(x.id)?'Saved':'Pending')+'</td></tr>').join('');
+}
+async function saveResults(){
+  const level=$('resLevel').value,gender=$('resGender').value,key=raceKey(level,gender),inputs=[...document.querySelectorAll('#resBody .position')];
+  const rows=[];const used=new Set();
+  for(const i of inputs){const raw=i.value.trim();if(!raw)continue;const pos=Number(raw);if(!Number.isInteger(pos)||pos<1){msg($('resMsg'),'Every position must be a whole number greater than 0.','badmsg');return}if(used.has(pos)){msg($('resMsg'),'Duplicate place '+pos+'. Each finish place must be unique.','badmsg');return}used.add(pos);rows.push({tournament_id:state.tournament.id,athlete_id:i.dataset.athlete,race_key:key,level,gender,position:pos,recorded_at:new Date().toISOString()})}
+  const raceIds=new Set(currentRace().map(x=>x.id));
+  const old=state.results.filter(x=>x.race_key===key&&raceIds.has(x.athlete_id));
+  const keep=new Set(rows.map(x=>x.athlete_id));
+  const remove=old.filter(x=>!keep.has(x.athlete_id)).map(x=>x.id);
+  if(remove.length){const d=await sb.from('athletics_cross_country_results').delete().in('id',remove);if(d.error){msg($('resMsg'),esc(d.error.message),'badmsg');return}}
+  if(rows.length){const u=await sb.from('athletics_cross_country_results').upsert(rows,{onConflict:'tournament_id,athlete_id'});if(u.error){msg($('resMsg'),esc(u.error.message),'badmsg');return}}
+  msg($('resMsg'),'Finish order saved.','goodmsg');await loadAll();
+}
+
+function calcRace(level,gender){
+  const ath=activeAthletes().filter(x=>x.level===level&&x.gender===gender),am=aMap(),rm=rMap();
+  const present=ath.filter(x=>am.get(x.id)===true),marked=ath.filter(x=>am.has(x.id));
+  const counts=Object.fromEntries(COLORS.map(c=>[c,present.filter(x=>x.color===c).length]));
+  const target=Math.max(0,...Object.values(counts));
+  const positions=present.map(x=>rm.get(x.id)).filter(Boolean);
+  const last=positions.length?Math.max(...positions):0,ghostValue=last+1;
+  const complete=present.every(x=>rm.has(x.id)) && marked.length===ath.length;
+  const scores=COLORS.map(color=>{
+    const runners=present.filter(x=>x.color===color),real=runners.map(x=>rm.get(x.id)).filter(Boolean),ghosts=Math.max(0,target-runners.length);
+    return {color,present:runners.length,realTotal:real.reduce((s,n)=>s+n,0),ghosts,ghostValue,total:real.reduce((s,n)=>s+n,0)+ghosts*ghostValue,finished:real.length};
+  }).sort((a,b)=>a.total-b.total||COLORS.indexOf(a.color)-COLORS.indexOf(b.color));
+  return {level,gender,present:present.length,target,last,ghostValue,complete,scores};
+}
+function renderStandings(){
+  if(!state.tournament)return;
+  const races=[];for(const l of LEVELS)for(const g of ['F','M']){const r=calcRace(l,g);if(r.present||state.attendance.some(x=>{const a=state.athletes.find(y=>y.id===x.athlete_id);return a&&a.level===l&&a.gender===g}))races.push(r)}
+  $('standings').innerHTML=races.map(r=>'<div class="race"><div class="racehead"><div><b>'+esc(r.level)+' · '+(r.gender==='F'?'Girls':'Boys')+'</b><div class="sub">Target '+r.target+' · Ghost value '+r.ghostValue+'</div></div><span class="pill">'+(r.complete?'FINAL':'PROVISIONAL')+'</span></div><div class="racebody"><div class="scoregrid">'+r.scores.map((s,i)=>'<div class="score '+(i===0&&r.complete?'rank1':'')+'"><b><span class="dot '+s.color+'"></span>'+s.color+' · '+s.total+'</b><small>Present '+s.present+' · Finished '+s.finished+' · Ghosts '+s.ghosts+(s.ghosts?' × '+s.ghostValue:'')+'</small></div>').join('')+'</div></div></div>').join('')||'<div class="message">No Cross Country attendance has been recorded yet.</div>';
+}
+function setTab(t){state.tab=t;document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===t));for(const x of ['attendance','results','standings'])$(x+'Pane').classList.toggle('hidden',x!==t);if(t==='standings')renderStandings()}
+
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;fillLevels();await loadAll();
+}
+async function login(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),esc(error.message),'badmsg');return}boot()}
+$('loginBtn').onclick=login;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+['attLevel','attGender','attColor'].forEach(id=>$(id).onchange=renderAttendance);
+['resLevel','resGender'].forEach(id=>$(id).onchange=renderResults);
+$('allPresent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,true));renderAttendance()};
+$('allAbsent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,false));renderAttendance()};
+$('saveAttendance').onclick=saveAttendance;$('saveResults').onclick=saveResults;
+$('autoNumber').onclick=()=>{let next=1;const used=new Set([...document.querySelectorAll('#resBody .position')].map(i=>Number(i.value)).filter(Boolean));for(const i of document.querySelectorAll('#resBody .position'))if(!i.value){while(used.has(next))next++;i.value=next;used.add(next++)}};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+boot().catch(e=>alert(e.message||String(e)));
+</script>
+</body>
+</html>
