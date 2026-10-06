@@ -89,7 +89,7 @@ const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const TOURNAMENT_SLUG='intercolour-athletics-2026';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
-const LEVELS=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
+const LEVELS=[];
 const COLORS=['Blue','Red','White','Green'];
 let state={tournament:null,races:[],athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
 
@@ -101,7 +101,12 @@ function rMap(){return new Map(state.results.filter(x=>x.result_status==='finish
 function activeAthletes(){return state.athletes.filter(x=>x.active)}
 
 function fillLevels(){
-  for(const id of ['attLevel','resLevel']) $(id).innerHTML=LEVELS.map(x=>'<option>'+x+'</option>').join('');
+  const levels=[...new Set(state.races.map(x=>x.level))];
+  for(const id of ['attLevel','resLevel']) {
+    const prev=$(id).value;
+    $(id).innerHTML=levels.map(x=>'<option>'+esc(x)+'</option>').join('');
+    if(levels.includes(prev)) $(id).value=prev;
+  }
 }
 async function loadAll(){
   const tid=state.tournament.id;
@@ -113,7 +118,7 @@ async function loadAll(){
   ]);
   if(rr.error)throw rr.error;if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
   state.races=rr.data||[];state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
-  state.pendingAttendance.clear();renderAll();
+  fillLevels();state.pendingAttendance.clear();renderAll();
 }
 function renderAll(){renderAttendance();renderResults();renderStandings()}
 
@@ -200,7 +205,7 @@ async function boot(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
   $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;fillLevels();await loadAll();
+  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;await loadAll();
 }
 async function login(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),esc(error.message),'badmsg');return}boot()}
 $('loginBtn').onclick=login;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
