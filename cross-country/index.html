@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=20">
+<link rel="manifest" href="../manifest.webmanifest?v=21">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -18,7 +18,7 @@
 .nav{display:flex;gap:7px;flex-wrap:wrap;margin-top:8px}.nav a{color:#d7e8f0;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800}.nav a.active{background:var(--blue);color:#fff}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;color:#d8e8ef}
 .wrap{max-width:1280px;margin:auto;padding:14px}.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}.pad{padding:14px}
-.tabs{display:flex;gap:7px;padding:10px;border-bottom:1px solid var(--line);background:#082231;position:relative;top:auto;z-index:2}.tab{flex:1;border:1px solid var(--line);background:#0d2a3a;color:#fff;border-radius:10px;padding:10px;font-weight:800}.tab.active{background:var(--blue);border-color:var(--blue)}
+.tabs{display:flex;gap:7px;padding:10px;border-bottom:1px solid var(--line);background:#082231;position:relative;top:auto;z-index:2}.tab{flex:1;border:1px solid var(--line);background:#0d2a3a;color:#fff;border-radius:10px;padding:10px;font-weight:800;text-decoration:none;text-align:center;display:flex;align-items:center;justify-content:center}.tab.active{background:var(--blue);border-color:var(--blue)}
 .filters{display:grid!important;visibility:visible!important;opacity:1!important;height:auto!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 16px!important;position:static!important;z-index:auto!important;background:#0b2638;padding:12px 0 14px;border-bottom:1px solid var(--line);clear:both}.filters .field{display:block!important;visibility:visible!important;opacity:1!important}.filters select{display:block!important;visibility:visible!important;opacity:1!important;min-height:42px}.field label{display:block;font-size:11px;color:var(--muted);font-weight:800;margin-bottom:5px}select,input{width:100%;background:#071d2d;color:#fff;border:1px solid var(--line);border-radius:10px;padding:10px}
 .btn{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0d2a3a;color:#fff;font-weight:800;cursor:pointer}.btn.primary{background:var(--blue);border-color:var(--blue)}.btn.good{background:#0d5f4a;border-color:#148566}.btn.bad{background:#64252b;border-color:#9d3942}.btn.warn{background:#815816;border-color:#a87926}.btn:disabled{opacity:.45}
 .tabs + section{position:relative;z-index:1}.filters + .stats{clear:both;margin-top:0!important}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.stat{background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v20</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v21</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -90,6 +90,7 @@
       <button class="tab active" data-tab="attendance">Teachers · Attendance</button>
       <button class="tab" data-tab="results">Admin · Finish Order</button>
       <button class="tab" data-tab="standings">Standings</button>
+      <a class="tab" href="https://drive.google.com/file/d/1kPzn130TIgHdnWt53rTv0KS02v8mqXu9/view?usp=drivesdk" target="_blank" rel="noopener noreferrer">Route Map</a>
     </div>
 
     <section id="attendancePane" class="pad">
@@ -469,7 +470,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=20',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=21',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
