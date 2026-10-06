@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=14">
+<link rel="manifest" href="../manifest.webmanifest?v=15">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v14</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v15</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -95,8 +95,8 @@
     <section id="attendancePane" class="pad">
       <div class="filters">
         <div class="field"><label>Level</label><select id="attLevel"></select></div>
-        <div class="field"><label>Gender</label><select id="attGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
-        <div class="field"><label>Colour</label><select id="attColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
+        <div class="field"><label>Gender</label><select id="attGender"><option value="All">All Genders</option><option value="F">Girls</option><option value="M">Boys</option></select></div>
+        <div class="field"><label>Colour</label><select id="attColor"><option value="All">All Colors</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div class="stats" id="attStats"></div>
       <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div><div class="selectionBar"><button class="btn" id="toggleSelection">Create Selection</button><button class="btn bad hidden" id="clearSelected">Clear selected Cross Country data</button><span id="selectedCount" class="count hidden">0 selected</span></div>
@@ -107,8 +107,8 @@
     <section id="resultsPane" class="pad hidden">
       <div class="filters">
         <div class="field"><label>Level</label><select id="resLevel"></select></div>
-        <div class="field"><label>Gender</label><select id="resGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
-        <div class="field"><label>Colour</label><select id="resColor"><option value="All">All colours</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
+        <div class="field"><label>Gender</label><select id="resGender"><option value="All">All Genders</option><option value="F">Girls</option><option value="M">Boys</option></select></div>
+        <div class="field"><label>Colour</label><select id="resColor"><option value="All">All Colors</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div id="raceState" class="message"></div>
       <div class="row" style="margin-bottom:10px"><button class="btn primary" id="saveResults">Save finish order</button><button class="btn" id="autoNumber">Auto-number empty rows</button></div>
@@ -154,7 +154,7 @@ function availableGenders(level){
   return ['F','M'].filter(g=>set.has(g));
 }
 function availableColors(level,gender){
-  const set=new Set(activeAthletes().filter(x=>x.level===level&&x.gender===gender).map(x=>x.color));
+  const set=new Set(activeAthletes().filter(x=>x.level===level&&(gender==='All'||x.gender===gender)).map(x=>x.color));
   return COLORS.filter(c=>set.has(c));
 }
 function fillFilters(){
@@ -171,25 +171,25 @@ function syncAttendanceFilterOptions(){
   const level=$('attLevel').value;
   const genders=availableGenders(level);
   const prevG=$('attGender').value;
-  $('attGender').innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
-  if(genders.includes(prevG))$('attGender').value=prevG;
+  $('attGender').innerHTML='<option value="All">All Genders</option>'+genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
+  $('attGender').value=(prevG==='All'||genders.includes(prevG))?prevG:'All';
   const gender=$('attGender').value;
   const colors=availableColors(level,gender);
   const prevC=$('attColor').value;
-  $('attColor').innerHTML=colors.map(x=>'<option>'+x+'</option>').join('');
-  if(colors.includes(prevC))$('attColor').value=prevC;
+  $('attColor').innerHTML='<option value="All">All Colors</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
+  $('attColor').value=(prevC==='All'||colors.includes(prevC))?prevC:'All';
 }
 function syncResultsFilterOptions(){
   const level=$('resLevel').value;
   const genders=availableGenders(level);
   const prevG=$('resGender').value;
-  $('resGender').innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
-  if(genders.includes(prevG))$('resGender').value=prevG;
+  $('resGender').innerHTML='<option value="All">All Genders</option>'+genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
+  $('resGender').value=(prevG==='All'||genders.includes(prevG))?prevG:'All';
   const gender=$('resGender').value;
   const colors=availableColors(level,gender);
   const prevC=$('resColor').value;
-  $('resColor').innerHTML='<option value="All">All colours</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
-  if(prevC==='All'||colors.includes(prevC))$('resColor').value=prevC;
+  $('resColor').innerHTML='<option value="All">All Colors</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
+  $('resColor').value=(prevC==='All'||colors.includes(prevC))?prevC:'All';
 }
 async function fetchAllRows(table,columns,tid,orderColumn=null){
   const pageSize=1000;
@@ -227,7 +227,9 @@ function renderAll(){renderAttendance();renderResults();renderStandings()}
 
 function currentAttList(){
   const L=$('attLevel').value,G=$('attGender').value,C=$('attColor').value;
-  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&x.color===C).sort((a,b)=>(a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name));
+  return activeAthletes()
+    .filter(x=>x.level===L&&(G==='All'||x.gender===G)&&(C==='All'||x.color===C))
+    .sort((a,b)=>(a.gender.localeCompare(b.gender)||a.color.localeCompare(b.color)||(a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)));
 }
 function statusFor(id){
   if(state.pendingAttendance.has(id))return state.pendingAttendance.get(id);
@@ -293,31 +295,46 @@ async function clearSelectedCrossCountryData(){
 }
 
 async function saveAttendance(){
-  const race=state.races.find(r=>r.level===$('attLevel').value&&r.gender===$('attGender').value);
-  if(!race){msg($('attMsg'),'Race not found.','badmsg');return}
   const list=currentAttList();
-  const current=new Map(state.attendance.filter(x=>x.race_id===race.id).map(x=>[x.athlete_id,x.status==='present']));
-  const presentIds=list.filter(x=>state.pendingAttendance.has(x.id)?state.pendingAttendance.get(x.id):current.get(x.id)===true).map(x=>x.id);
+  if(!list.length){msg($('attMsg'),'No students match these filters.','warnmsg');return}
+  const groups=new Map();
+  for(const athlete of list){
+    const race=state.races.find(r=>r.level===athlete.level&&r.gender===athlete.gender);
+    if(!race)continue;
+    const key=race.id+'|'+athlete.color;
+    if(!groups.has(key))groups.set(key,{race,color:athlete.color,athletes:[]});
+    groups.get(key).athletes.push(athlete);
+  }
+  if(!groups.size){msg($('attMsg'),'No Cross Country races found for these filters.','badmsg');return}
   $('saveAttendance').disabled=true;
-  const {data,error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:$('attColor').value,p_present_ids:presentIds});
+  let totalPresent=0;
+  for(const {race,color,athletes} of groups.values()){
+    const current=new Map(state.attendance.filter(x=>x.race_id===race.id&&x.color===color).map(x=>[x.athlete_id,x.status==='present']));
+    const presentIds=athletes.filter(x=>state.pendingAttendance.has(x.id)?state.pendingAttendance.get(x.id):current.get(x.id)===true).map(x=>x.id);
+    const {data,error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:color,p_present_ids:presentIds});
+    if(error){$('saveAttendance').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
+    totalPresent+=Number(data?.present||0);
+  }
   $('saveAttendance').disabled=false;
-  if(error){msg($('attMsg'),esc(error.message),'badmsg');return}
-  msg($('attMsg'),'Attendance saved · '+data.present+' present.','goodmsg');await loadAll();
+  msg($('attMsg'),'Attendance saved · '+totalPresent+' present across selected filters.','goodmsg');
+  await loadAll();
 }
 
 function currentRace(){
   const L=$('resLevel').value,G=$('resGender').value,C=$('resColor').value,am=aMap();
-  return activeAthletes().filter(x=>x.level===L&&x.gender===G&&am.get(x.id)===true&&(C==='All'||x.color===C));
+  return activeAthletes().filter(x=>x.level===L&&(G==='All'||x.gender===G)&&am.get(x.id)===true&&(C==='All'||x.color===C));
 }
 function renderResults(){
   if(!state.tournament)return;
   const list=currentRace().sort((a,b)=>{const pa=rMap().get(a.id),pb=rMap().get(b.id);if(pa&&pb)return pa-pb;if(pa)return-1;if(pb)return 1;return (a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)});
   const rm=rMap(),finished=list.filter(x=>rm.has(x.id)).length,unmarked=list.length-finished;
-  const race=state.races.find(r=>r.level===$('resLevel').value&&r.gender===$('resGender').value),cf=$('resColor').value;$('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+(cf==='All'?'':' · '+esc(cf))+'</b><br>Status: '+esc((race?.status||'pending').replaceAll('_',' '))+' · Visible present: '+list.length+' · Saved: '+finished+' · Pending: '+unmarked+(cf==='All'&&unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'');
+  const rg=$('resGender').value, race=rg==='All'?null:state.races.find(r=>r.level===$('resLevel').value&&r.gender===rg),cf=$('resColor').value;
+  $('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+(rg==='All'?'All Genders':(rg==='F'?'Girls':'Boys'))+(cf==='All'?' · All Colors':' · '+esc(cf))+'</b><br>'+(rg==='All'?'View only · choose one gender to save finish positions.':'Status: '+esc((race?.status||'pending').replaceAll('_',' ')))+' · Visible present: '+list.length+' · Saved: '+finished+' · Pending: '+unmarked+(cf==='All'&&unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'');
   $('resBody').innerHTML=list.map(x=>'<tr><td><input class="position" type="number" min="1" step="1" data-athlete="'+x.id+'" value="'+(rm.get(x.id)||'')+'"></td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td>'+(rm.has(x.id)?'Saved':'Pending')+'</td></tr>').join('');
 }
 async function saveResults(){
   const level=$('resLevel').value,gender=$('resGender').value;
+  if(gender==='All'){msg($('resMsg'),'Choose Girls or Boys before saving finish positions. Finish order is scored separately by gender.','warnmsg');return}
   const race=state.races.find(r=>r.level===level&&r.gender===gender);
   if(!race){msg($('resMsg'),'Race not found.','badmsg');return}
   const inputs=[...document.querySelectorAll('#resBody .position')];
@@ -427,7 +444,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=14',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=15',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
