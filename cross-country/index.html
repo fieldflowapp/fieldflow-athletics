@@ -21,7 +21,7 @@
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}.stat{background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:10px}.stat b{display:block;font-size:20px}.stat span{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800}
 .tablewrap{overflow:auto;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;font-size:12px;min-width:560px}.table th,.table td{padding:9px;border-bottom:1px solid #173747;text-align:left;white-space:nowrap}.table th{position:sticky;top:0;background:#0b2230;z-index:2;color:#bcd0d9;font-size:10px;text-transform:uppercase}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}.Blue{background:#0b5fff}.Red{background:#ff4d4d}.White{background:#fff;border:1px solid #8da0aa}.Green{background:#18d39e}
-.statusBtns{display:flex;gap:6px}.statusBtns button{min-width:44px;padding:7px 9px}.onP{background:#0d5f4a;border-color:#18d39e}.onA{background:#64252b;border-color:#ff4d4d}.unset{opacity:.55}
+.statusBtns{display:flex;gap:6px}.statusBtns button{min-width:44px;padding:7px 9px}.onP{background:#0d5f4a;border-color:#18d39e}.onA{background:#64252b;border-color:#ff4d4d}.unset{opacity:.55}.selectCol{width:42px;text-align:center}.selectBox{width:22px;height:22px;accent-color:#0b5fff}.selectionBar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}.selectionBar .count{font-size:12px;color:var(--muted)}
 .message{border:1px solid var(--line);border-radius:11px;padding:10px;font-size:12px;margin:9px 0;background:#081c28}.goodmsg{border-color:#1d8b6e}.badmsg{border-color:#a33b46}.warnmsg{border-color:#9a6b20}.race{border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden}.racehead{padding:10px 12px;background:#082434;display:flex;justify-content:space-between;gap:10px;align-items:center}.racebody{padding:10px}.scoregrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.score{border:1px solid var(--line);border-radius:11px;padding:9px;background:#071d2d}.score b{font-size:17px}.score small{display:block;color:var(--muted);margin-top:3px}.rank1{outline:2px solid var(--green)}
 .login{max-width:430px;margin:60px auto}.position{width:88px}.muted{color:var(--muted)}
 @media(max-width:760px){.topbar{position:relative;flex-direction:column}.tabs{top:0}.filters{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}.scoregrid{grid-template-columns:1fr 1fr}.wrap{padding:8px}.table{min-width:520px}.nav{gap:5px}.nav a{padding:7px 8px;font-size:11px}}
@@ -96,9 +96,9 @@
         <div class="field"><label>Colour</label><select id="attColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div class="stats" id="attStats"></div>
-      <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div>
+      <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div><div class="selectionBar"><button class="btn" id="toggleSelection">Create Selection</button><button class="btn bad hidden" id="clearSelected">Clear selected Cross Country data</button><span id="selectedCount" class="count hidden">0 selected</span></div>
       <div id="attMsg"></div>
-      <div class="tablewrap"><table class="table"><thead><tr><th>Surname</th><th>Name</th><th>Colour</th><th>Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th id="selectHeader" class="selectCol hidden">Select</th><th>Surname</th><th>Name</th><th>Colour</th><th>Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
     </section>
 
     <section id="resultsPane" class="pad hidden">
@@ -129,7 +129,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const LEVELS=[];
 const COLORS=['Blue','Red','White','Green'];
-let state={tournament:null,races:[],athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
+let state={tournament:null,races:[],athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance',selectionMode:false,selectedAthletes:new Set()};
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+text+'</div>'}
@@ -214,9 +214,60 @@ function renderAttendance(){
   const list=currentAttList();let p=0,a=0,u=0;
   for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
   $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Roster loaded',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
-  $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id);return '<tr><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
+  $('selectHeader').classList.toggle('hidden',!state.selectionMode);
+  $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id),sel=state.selectedAthletes.has(x.id);return '<tr>'+(state.selectionMode?'<td class="selectCol"><input class="selectBox" type="checkbox" data-select-athlete="'+x.id+'" '+(sel?'checked':'')+'></td>':'')+'<td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
+  document.querySelectorAll('[data-select-athlete]').forEach(el=>el.onchange=()=>{if(el.checked)state.selectedAthletes.add(el.dataset.selectAthlete);else state.selectedAthletes.delete(el.dataset.selectAthlete);updateSelectionUI()});
+  updateSelectionUI();
 }
 window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
+
+function updateSelectionUI(){
+  const n=state.selectedAthletes.size;
+  $('selectedCount').textContent=n+' selected';
+  $('selectedCount').classList.toggle('hidden',!state.selectionMode);
+  $('clearSelected').classList.toggle('hidden',!state.selectionMode||n===0);
+  $('toggleSelection').textContent=state.selectionMode?'Cancel Selection':'Create Selection';
+}
+function toggleSelectionMode(){
+  state.selectionMode=!state.selectionMode;
+  if(!state.selectionMode)state.selectedAthletes.clear();
+  renderAttendance();
+}
+async function clearSelectedCrossCountryData(){
+  const ids=[...state.selectedAthletes];
+  if(!ids.length)return;
+  const ok=confirm('Clear Cross Country attendance and result data for '+ids.length+' selected student'+(ids.length===1?'':'s')+'?\n\nThe master Athletics student database will remain unchanged.');
+  if(!ok)return;
+  $('clearSelected').disabled=true;
+
+  const selected=new Set(ids);
+  const affectedGroups=new Map();
+  for(const athlete of state.athletes.filter(a=>selected.has(a.id))){
+    const race=state.races.find(r=>r.level===athlete.level&&r.gender===athlete.gender);
+    if(race)affectedGroups.set(race.id+'|'+athlete.color,{race,color:athlete.color});
+  }
+
+  for(const {race,color} of affectedGroups.values()){
+    const presentIds=state.attendance
+      .filter(a=>a.race_id===race.id&&a.color===color&&a.status==='present'&&!selected.has(a.athlete_id))
+      .map(a=>a.athlete_id);
+    const {error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:color,p_present_ids:presentIds});
+    if(error){$('clearSelected').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
+  }
+
+  for(const id of ids){
+    const result=state.results.find(r=>r.athlete_id===id&&r.result_status==='finished');
+    if(result?.race_id){
+      const {error}=await sb.rpc('cross_country_save_finish',{p_race_id:result.race_id,p_athlete_id:id,p_position:null});
+      if(error){$('clearSelected').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
+    }
+  }
+
+  $('clearSelected').disabled=false;
+  state.selectedAthletes.clear();state.selectionMode=false;
+  msg($('attMsg'),'Selected Cross Country data cleared. Master roster preserved.','goodmsg');
+  await loadAll();
+}
 
 async function saveAttendance(){
   const race=state.races.find(r=>r.level===$('attLevel').value&&r.gender===$('attGender').value);
@@ -314,6 +365,8 @@ $('resGender').onchange=()=>{syncResultsFilterOptions();renderResults()};
 $('resColor').onchange=renderResults;
 $('allPresent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,true));renderAttendance()};
 $('allAbsent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,false));renderAttendance()};
+$('toggleSelection').onclick=toggleSelectionMode;
+$('clearSelected').onclick=clearSelectedCrossCountryData;
 $('saveAttendance').onclick=saveAttendance;$('saveResults').onclick=saveResults;
 $('autoNumber').onclick=()=>{let next=1;const used=new Set([...document.querySelectorAll('#resBody .position')].map(i=>Number(i.value)).filter(Boolean));for(const i of document.querySelectorAll('#resBody .position'))if(!i.value){while(used.has(next))next++;i.value=next;used.add(next++)}};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
