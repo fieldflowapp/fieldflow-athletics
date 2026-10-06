@@ -94,7 +94,7 @@
 @media(max-width:560px){.install-app-bar{align-items:flex-start}.install-app-actions{flex-direction:column}.install-app-actions button{padding:8px 10px}}
 </style>
 
-  <link rel="manifest" href="./manifest.webmanifest?v=13">
+  <link rel="manifest" href="./manifest.webmanifest?v=14">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -156,7 +156,7 @@
 <div id="appView" class="shell hidden">
   <div class="topbar">
     <div><div class="brand"><div class="mark"><img src="./icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Athletics Admin Console</div></div></div><div style="display:flex;gap:7px;margin-top:8px"><a href="./" style="color:#fff;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;background:#0b5fff">Track</a><a href="./field/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Field</a><a href="./students/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Students</a><a href="./entries/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Entries</a><a id="printLink" href="./print/" target="_blank" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Print</a><a href="./cross-country/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Cross Country</a></div></div>
-    <div class="flex"><span class="pill">Build 13</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
+    <div class="flex"><span class="pill">Build 14</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
   </div>
 
   <div class="grid">
@@ -836,7 +836,7 @@ if(isStandalone())installBar?.classList.add('hidden');
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('./service-worker.js?v=13',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('./service-worker.js?v=14',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
