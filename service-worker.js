@@ -1,5 +1,5 @@
-const CACHE='fieldflow-athletics-v4';
-const SHELL=['./','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.svg','./icons/maskable-icon-512.svg'];
+const CACHE='fieldflow-athletics-v5';
+const SHELL=['./','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512-v2.svg','./icons/maskable-icon-512-v2.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)));self.skipWaiting();});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim();});
 self.addEventListener('fetch',event=>{
@@ -10,5 +10,5 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(event.request).then(r=>{const x=r.clone();caches.open(CACHE).then(c=>c.put(event.request,x));return r;}).catch(()=>caches.match(event.request).then(r=>r||caches.match('./'))));
     return;
   }
-  event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(r=>{const x=r.clone();caches.open(CACHE).then(c=>c.put(event.request,x));return r;})));
+  event.respondWith(fetch(event.request).then(r=>{const x=r.clone();caches.open(CACHE).then(c=>c.put(event.request,x));return r;}).catch(()=>caches.match(event.request)));
 });
