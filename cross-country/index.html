@@ -162,19 +162,20 @@ async function saveResults(){
   const race=state.races.find(r=>r.level===level&&r.gender===gender);
   if(!race){msg($('resMsg'),'Race not found.','badmsg');return}
   const inputs=[...document.querySelectorAll('#resBody .position')];
-  const used=new Set();
-  for(const i of inputs){const raw=i.value.trim();if(!raw)continue;const pos=Number(raw);if(!Number.isInteger(pos)||pos<1){msg($('resMsg'),'Every position must be a whole number greater than 0.','badmsg');return}if(used.has(pos)){msg($('resMsg'),'Duplicate place '+pos+'. Each finish place must be unique.','badmsg');return}used.add(pos)}
-  $('saveResults').disabled=true;
+  const rows=[];const used=new Set();
   for(const i of inputs){
-    const raw=i.value.trim(),pos=raw?Number(raw):null;
-    const old=state.results.find(x=>x.race_id===race.id&&x.athlete_id===i.dataset.athlete);
-    const oldPos=old?.finish_position??null;
-    if(pos===oldPos)continue;
-    const {error}=await sb.rpc('cross_country_save_finish',{p_race_id:race.id,p_athlete_id:i.dataset.athlete,p_position:pos});
-    if(error){$('saveResults').disabled=false;msg($('resMsg'),esc(error.message),'badmsg');return}
+    const raw=i.value.trim();if(!raw)continue;
+    const pos=Number(raw);
+    if(!Number.isInteger(pos)||pos<1){msg($('resMsg'),'Every position must be a whole number greater than 0.','badmsg');return}
+    if(used.has(pos)){msg($('resMsg'),'Duplicate place '+pos+'. Each finish place must be unique.','badmsg');return}
+    used.add(pos);rows.push({athlete_id:i.dataset.athlete,position:pos});
   }
+  $('saveResults').disabled=true;
+  const {data,error}=await sb.rpc('cross_country_save_finish_order',{p_race_id:race.id,p_rows:rows});
   $('saveResults').disabled=false;
-  msg($('resMsg'),'Finish order saved.','goodmsg');await loadAll();
+  if(error){msg($('resMsg'),esc(error.message),'badmsg');return}
+  msg($('resMsg'),'Finish order saved · '+data.saved+' results · '+data.race_status.replaceAll('_',' ')+'.','goodmsg');
+  await loadAll();
 }
 
 async function renderStandings(){
