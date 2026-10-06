@@ -26,7 +26,7 @@
     .badge{display:inline-flex;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800;border:1px solid #2a5166}.ok{color:#5ff0b5}.muted{color:var(--muted)}.bad{color:#ff7a7a}.warntext{color:#ffc36b}
     .heat{border:1px solid var(--line);border-radius:15px;margin:12px 0;overflow:hidden}.heathead{display:flex;justify-content:space-between;align-items:center;background:#0a2b3f;padding:10px 12px}.heatbody{padding:8px}
     .lane{font-weight:900;font-size:16px}.timeinput{width:110px;text-align:center}.mini{font-size:11px;padding:6px 8px;border-radius:8px}
-    .message{padding:10px 12px;border-radius:11px;margin:8px 0;background:#082434;border:1px solid var(--line);font-size:12px}.message.good{border-color:#1b7257;color:#8df2c9}.message.bad{border-color:#7a2e35;color:#ffaaaa}.message.warn{border-color:#77501c;color:#ffd08a}
+    .message{padding:10px 12px;border-radius:11px;margin:8px 0;background:#082434;border:1px solid var(--line);font-size:12px}.student-search{margin:10px 0 12px}.student-search input{width:100%;min-height:44px}.message.good{border-color:#1b7257;color:#8df2c9}.message.bad{border-color:#7a2e35;color:#ffaaaa}.message.warn{border-color:#77501c;color:#ffd08a}
     .login{max-width:420px;margin:10vh auto}.login .panel{padding:22px}.login h1{font-size:24px;margin-bottom:5px}.login .btn{width:100%;margin-top:8px}
     .empty{padding:34px;text-align:center;color:var(--muted)}.right{margin-left:auto}.flex{display:flex;gap:8px;align-items:center}.nowrap{white-space:nowrap}
     @media(max-width:900px){.grid{grid-template-columns:1fr}.statrow{grid-template-columns:repeat(2,1fr)}.shell{padding:10px}.topbar{align-items:flex-start}.desktop-only{display:none}}
@@ -94,7 +94,7 @@
 @media(max-width:560px){.install-app-bar{align-items:flex-start}.install-app-actions{flex-direction:column}.install-app-actions button{padding:8px 10px}}
 </style>
 
-  <link rel="manifest" href="./manifest.webmanifest?v=15">
+  <link rel="manifest" href="./manifest.webmanifest?v=16">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -156,7 +156,7 @@
 <div id="appView" class="shell hidden">
   <div class="topbar">
     <div><div class="brand"><div class="mark"><img src="./icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Athletics Admin Console</div></div></div><div style="display:flex;gap:7px;margin-top:8px"><a href="./" style="color:#fff;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;background:#0b5fff">Track</a><a href="./field/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Field</a><a href="./students/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Students</a><a href="./entries/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Entries</a><a id="printLink" href="./print/" target="_blank" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Print</a><a href="./cross-country/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Cross Country</a></div></div>
-    <div class="flex"><span class="pill">Build 15</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
+    <div class="flex"><span class="pill">Build 16</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
   </div>
 
   <div class="grid">
@@ -584,10 +584,13 @@ function renderRegistrations(){
   const visibleAthletes=(colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour));
   pane.innerHTML='<div class="toolbar"><button class="btn primary" id="saveRegs">Save changes</button><span class="muted">Select athletes for '+esc(e.name)+(colour!=='All'?' · '+esc(colour):'')+($('gender').value==='All'?' · All Genders shown; '+genderName(e.gender)+' eligible for this event.':'')+'. TEST MODE: registrations are unlimited for this event.</span></div>'+
     '<div class="statrow">'+['Blue','Red','White','Green'].map(c=>'<div class="stat"><b>'+counts[c]+'</b><span>'+c+' registered</span></div>').join('')+'</div>'+
+    '<div class="student-search"><input id="studentSearch" type="search" placeholder="Search student by surname, name or ID" autocomplete="off"></div>'+
     '<div class="tablewrap"><table><thead><tr><th>In</th><th>Athlete</th><th>Colour</th><th>Level</th></tr></thead><tbody>'+
-    visibleAthletes.map(a=>{const eligible=a.gender===e.gender;return '<tr><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+' '+(!eligible?'disabled':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+(eligible?'':' · View only')+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>'}).join('')+
+    visibleAthletes.map(a=>{const eligible=a.gender===e.gender,search=(a.last_name+' '+a.first_name+' '+(a.external_code||'')+' '+a.color+' '+a.level+' '+a.gender).toLowerCase();return '<tr data-student-search="'+esc(search)+'"><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+' '+(!eligible?'disabled':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+(eligible?'':' · View only')+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>'}).join('')+
     '</tbody></table></div><div id="regMsg"></div>';
   const btn=$('saveRegs');if(btn)btn.onclick=saveRegistrations;
+  const search=$('studentSearch');
+  if(search)search.oninput=()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('#registrationsPane [data-student-search]').forEach(row=>row.classList.toggle('hidden',q&&!row.dataset.studentSearch.includes(q)))};
 }
 async function saveRegistrations(){
   const e=state.currentEvent, selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id);
@@ -839,7 +842,7 @@ if(isStandalone())installBar?.classList.add('hidden');
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('./service-worker.js?v=15',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('./service-worker.js?v=16',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
