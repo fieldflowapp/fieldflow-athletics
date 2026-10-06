@@ -87,6 +87,7 @@
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const TOURNAMENT_ID='204a8f52-5525-4077-85e4-1d3811d68323';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const LEVELS=[];
@@ -203,7 +204,18 @@ function setTab(t){state.tab=t;document.querySelectorAll('.tab').forEach(b=>b.cl
 
 async function boot(){
   const {data:{session}}=await sb.auth.getSession();
-  if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
+  if(!session){
+    state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
+    const {data:r,error}=await sb.from('athletics_cross_country_races').select('*').eq('tournament_id',TOURNAMENT_ID).order('level').order('gender');
+    if(error)throw error;
+    state.races=r||[];fillLevels();
+    $('userPill').textContent='Public';
+    $('loginView').classList.remove('hidden');$('appView').classList.remove('hidden');
+    document.querySelector('[data-tab="attendance"]').classList.add('hidden');
+    document.querySelector('[data-tab="results"]').classList.add('hidden');
+    setTab('standings');
+    return;
+  }
   $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
   const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;await loadAll();
 }
