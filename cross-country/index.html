@@ -138,34 +138,55 @@ function aMap(){return new Map(state.attendance.map(x=>[x.athlete_id,x.status===
 function rMap(){return new Map(state.results.filter(x=>x.result_status==='finished').map(x=>[x.athlete_id,x.finish_position]))}
 function activeAthletes(){return state.athletes.filter(x=>x.active)}
 
-function fillFilters(){
-  const roster=activeAthletes();
+function orderedLevels(roster){
   const preferred=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
-  const levels=[...new Set(roster.map(x=>x.level).filter(Boolean))].sort((a,b)=>{
+  return [...new Set(roster.map(x=>x.level).filter(Boolean))].sort((a,b)=>{
     const ia=preferred.indexOf(a),ib=preferred.indexOf(b);
     if(ia>=0||ib>=0)return (ia<0?999:ia)-(ib<0?999:ib);
     return a.localeCompare(b);
   });
-  const genders=[...new Set(roster.map(x=>x.gender).filter(Boolean))];
-  const colors=['Blue','Red','White','Green'].filter(c=>roster.some(x=>x.color===c));
-
+}
+function availableGenders(level){
+  const set=new Set(activeAthletes().filter(x=>x.level===level).map(x=>x.gender));
+  return ['F','M'].filter(g=>set.has(g));
+}
+function availableColors(level,gender){
+  const set=new Set(activeAthletes().filter(x=>x.level===level&&x.gender===gender).map(x=>x.color));
+  return COLORS.filter(c=>set.has(c));
+}
+function fillFilters(){
+  const roster=activeAthletes(),levels=orderedLevels(roster);
   for(const id of ['attLevel','resLevel']){
     const prev=$(id).value;
     $(id).innerHTML=levels.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
     if(levels.includes(prev))$(id).value=prev;
   }
-  for(const id of ['attGender','resGender']){
-    const prev=$(id).value;
-    $(id).innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
-    if(genders.includes(prev))$(id).value=prev;
-  }
-  const attPrev=$('attColor').value;
+  syncAttendanceFilterOptions();
+  syncResultsFilterOptions();
+}
+function syncAttendanceFilterOptions(){
+  const level=$('attLevel').value;
+  const genders=availableGenders(level);
+  const prevG=$('attGender').value;
+  $('attGender').innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
+  if(genders.includes(prevG))$('attGender').value=prevG;
+  const gender=$('attGender').value;
+  const colors=availableColors(level,gender);
+  const prevC=$('attColor').value;
   $('attColor').innerHTML=colors.map(x=>'<option>'+x+'</option>').join('');
-  if(colors.includes(attPrev))$('attColor').value=attPrev;
-
-  const resPrev=$('resColor').value;
+  if(colors.includes(prevC))$('attColor').value=prevC;
+}
+function syncResultsFilterOptions(){
+  const level=$('resLevel').value;
+  const genders=availableGenders(level);
+  const prevG=$('resGender').value;
+  $('resGender').innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
+  if(genders.includes(prevG))$('resGender').value=prevG;
+  const gender=$('resGender').value;
+  const colors=availableColors(level,gender);
+  const prevC=$('resColor').value;
   $('resColor').innerHTML='<option value="All">All colours</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
-  if(resPrev==='All'||colors.includes(resPrev))$('resColor').value=resPrev;
+  if(prevC==='All'||colors.includes(prevC))$('resColor').value=prevC;
 }
 async function loadAll(){
   const tid=state.tournament.id;
@@ -218,7 +239,7 @@ function renderResults(){
   if(!state.tournament)return;
   const list=currentRace().sort((a,b)=>{const pa=rMap().get(a.id),pb=rMap().get(b.id);if(pa&&pb)return pa-pb;if(pa)return-1;if(pb)return 1;return (a.last_name+' '+a.first_name).localeCompare(b.last_name+' '+b.first_name)});
   const rm=rMap(),finished=list.filter(x=>rm.has(x.id)).length,unmarked=list.length-finished;
-  const race=state.races.find(r=>r.level===$('resLevel').value&&r.gender===$('resGender').value);$('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+'</b><br>Status: '+esc((race?.status||'pending').replaceAll('_',' '))+' · Present: '+list.length+' · Finish places saved: '+finished+' · Pending: '+unmarked+(unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'<br><b>Race complete.</b>');
+  const race=state.races.find(r=>r.level===$('resLevel').value&&r.gender===$('resGender').value),cf=$('resColor').value;$('raceState').innerHTML='<b>'+esc($('resLevel').value)+' · '+($('resGender').value==='F'?'Girls':'Boys')+(cf==='All'?'':' · '+esc(cf))+'</b><br>Status: '+esc((race?.status||'pending').replaceAll('_',' '))+' · Visible present: '+list.length+' · Saved: '+finished+' · Pending: '+unmarked+(cf==='All'&&unmarked?'<br><span class="muted">Race is provisional until every present runner has a valid place.</span>':'');
   $('resBody').innerHTML=list.map(x=>'<tr><td><input class="position" type="number" min="1" step="1" data-athlete="'+x.id+'" value="'+(rm.get(x.id)||'')+'"></td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td>'+(rm.has(x.id)?'Saved':'Pending')+'</td></tr>').join('');
 }
 async function saveResults(){
@@ -235,7 +256,11 @@ async function saveResults(){
     used.add(pos);rows.push({athlete_id:i.dataset.athlete,position:pos});
   }
   $('saveResults').disabled=true;
-  const {data,error}=await sb.rpc('cross_country_save_finish_order',{p_race_id:race.id,p_rows:rows});
+  const selectedColor=$('resColor').value;
+  const call=selectedColor==='All'
+    ? sb.rpc('cross_country_save_finish_order',{p_race_id:race.id,p_rows:rows})
+    : sb.rpc('cross_country_save_finish_subset',{p_race_id:race.id,p_color:selectedColor,p_rows:rows});
+  const {data,error}=await call;
   $('saveResults').disabled=false;
   if(error){msg($('resMsg'),esc(error.message),'badmsg');return}
   msg($('resMsg'),'Finish order saved · '+data.saved+' results · '+data.race_status.replaceAll('_',' ')+'.','goodmsg');
@@ -281,8 +306,12 @@ async function login(){const {error}=await sb.auth.signInWithPassword({email:$('
 $('loginBtn').onclick=login;$('logoutBtn').onclick=async()=>{await sb.auth.signOut();location.reload()};
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
-['attLevel','attGender','attColor'].forEach(id=>$(id).onchange=renderAttendance);
-['resLevel','resGender','resColor'].forEach(id=>$(id).onchange=renderResults);
+$('attLevel').onchange=()=>{syncAttendanceFilterOptions();renderAttendance()};
+$('attGender').onchange=()=>{syncAttendanceFilterOptions();renderAttendance()};
+$('attColor').onchange=renderAttendance;
+$('resLevel').onchange=()=>{syncResultsFilterOptions();renderResults()};
+$('resGender').onchange=()=>{syncResultsFilterOptions();renderResults()};
+$('resColor').onchange=renderResults;
 $('allPresent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,true));renderAttendance()};
 $('allAbsent').onclick=()=>{currentAttList().forEach(x=>state.pendingAttendance.set(x.id,false));renderAttendance()};
 $('saveAttendance').onclick=saveAttendance;$('saveResults').onclick=saveResults;
