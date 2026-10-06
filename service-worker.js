@@ -1,5 +1,4 @@
-const CACHE='fieldflow-athletics-v13';
-const SHELL=['./manifest.webmanifest?v=13','./icons/icon-192.png'];
+const CACHE='fieldflow-athletics-v14';
 self.addEventListener('install',event=>{self.skipWaiting();});
 self.addEventListener('activate',event=>{
   event.waitUntil(caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))));
