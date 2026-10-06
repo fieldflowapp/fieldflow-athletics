@@ -94,7 +94,7 @@
 @media(max-width:560px){.install-app-bar{align-items:flex-start}.install-app-actions{flex-direction:column}.install-app-actions button{padding:8px 10px}}
 </style>
 
-  <link rel="manifest" href="./manifest.webmanifest?v=14">
+  <link rel="manifest" href="./manifest.webmanifest?v=15">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -156,15 +156,15 @@
 <div id="appView" class="shell hidden">
   <div class="topbar">
     <div><div class="brand"><div class="mark"><img src="./icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Athletics Admin Console</div></div></div><div style="display:flex;gap:7px;margin-top:8px"><a href="./" style="color:#fff;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;background:#0b5fff">Track</a><a href="./field/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Field</a><a href="./students/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Students</a><a href="./entries/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Entries</a><a id="printLink" href="./print/" target="_blank" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Print</a><a href="./cross-country/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Cross Country</a></div></div>
-    <div class="flex"><span class="pill">Build 14</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
+    <div class="flex"><span class="pill">Build 15</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
   </div>
 
   <div class="grid">
     <aside class="panel pad">
       <h2>Event selector</h2>
       <div class="field"><label>Category</label><select id="category"></select></div>
-      <div class="field"><label>Gender</label><select id="gender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
-      <div class="field"><label>Colour</label><select id="colour"><option value="All">All colours</option><option value="Blue">Blue</option><option value="Red">Red</option><option value="White">White</option><option value="Green">Green</option></select></div>
+      <div class="field"><label>Gender</label><select id="gender"><option value="All">All Genders</option><option value="F">Girls</option><option value="M">Boys</option></select></div>
+      <div class="field"><label>Colour</label><select id="colour"><option value="All">All Colors</option><option value="Blue">Blue</option><option value="Red">Red</option><option value="White">White</option><option value="Green">Green</option></select></div>
       <div class="field"><label>Event</label><select id="event"></select></div>
       <div id="eventInfo" class="message"></div>
 
@@ -352,12 +352,12 @@ async function boot(){
     $('gender').value=targetEvent.gender;
   }else{
     if(requestedCategory&&cats.includes(requestedCategory))$('category').value=requestedCategory;
-    if(requestedGender==='M'||requestedGender==='F')$('gender').value=requestedGender;
+    if(requestedGender==='M'||requestedGender==='F'||requestedGender==='All')$('gender').value=requestedGender;
   }
 
   const cat=$('category').value,g=$('gender').value;
-  const list=state.events.filter(e=>e.category===cat&&e.gender===g);
-  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+'</option>').join('');
+  const list=state.events.filter(e=>e.category===cat&&(g==='All'||e.gender===g));
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+(g==='All'?' · '+genderName(e.gender):'')+'</option>').join('');
   if(targetEvent&&list.some(e=>String(e.id)===String(targetEvent.id)))$('event').value=targetEvent.id;
   await loadEvent();
 
@@ -389,8 +389,8 @@ function setTab(tab){
 }
 async function refreshEventList(){
   const cat=$('category').value,g=$('gender').value;
-  const list=state.events.filter(e=>e.category===cat&&e.gender===g);
-  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+'</option>').join('');
+  const list=state.events.filter(e=>e.category===cat&&(g==='All'||e.gender===g));
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+(g==='All'?' · '+genderName(e.gender):'')+'</option>').join('');
   await loadEvent();
 }
 async function loadEvent(){
@@ -419,8 +419,11 @@ async function reloadData(){
     renderAll();return;
   }
 
+  let athleteQuery=sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).eq('level',e.category).eq('active',true).order('color').order('last_name');
+  const selectedGender=$('gender').value;
+  if(selectedGender!=='All')athleteQuery=athleteQuery.eq('gender',selectedGender);
   const [a,r,h]=await Promise.all([
-    sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).eq('level',e.category).eq('gender',e.gender).eq('active',true).order('color').order('last_name'),
+    athleteQuery,
     sb.from('athletics_registrations').select('*').eq('event_id',e.id).order('created_at'),
     sb.from('athletics_track_heats').select('*').eq('event_id',e.id).order('stage').order('heat_number')
   ]);
@@ -578,11 +581,11 @@ function renderRegistrations(){
   const reg=regByAthlete(), counts={Blue:0,Red:0,White:0,Green:0};
   state.registrations.filter(r=>r.status==='registered').forEach(r=>{const a=state.athletes.find(x=>x.id===r.athlete_id);if(a)counts[a.color]++});
   const colour=$('colour')?.value||'All';
-  const visibleAthletes=colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour);
-  pane.innerHTML='<div class="toolbar"><button class="btn primary" id="saveRegs">Save changes</button><span class="muted">Select athletes for '+esc(e.name)+(colour!=='All'?' · '+esc(colour):'')+'. TEST MODE: registrations are unlimited for this event.</span></div>'+
+  const visibleAthletes=(colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour));
+  pane.innerHTML='<div class="toolbar"><button class="btn primary" id="saveRegs">Save changes</button><span class="muted">Select athletes for '+esc(e.name)+(colour!=='All'?' · '+esc(colour):'')+($('gender').value==='All'?' · All Genders shown; '+genderName(e.gender)+' eligible for this event.':'')+'. TEST MODE: registrations are unlimited for this event.</span></div>'+
     '<div class="statrow">'+['Blue','Red','White','Green'].map(c=>'<div class="stat"><b>'+counts[c]+'</b><span>'+c+' registered</span></div>').join('')+'</div>'+
     '<div class="tablewrap"><table><thead><tr><th>In</th><th>Athlete</th><th>Colour</th><th>Level</th></tr></thead><tbody>'+
-    visibleAthletes.map(a=>'<tr><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>').join('')+
+    visibleAthletes.map(a=>{const eligible=a.gender===e.gender;return '<tr><td><input style="width:auto" type="checkbox" class="regcb" data-id="'+a.id+'" '+(reg.has(a.id)?'checked':'')+' '+(!eligible?'disabled':'')+'></td><td><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b><br><span class="muted">'+esc(a.external_code)+(eligible?'':' · View only')+'</span></td><td>'+colorDot(a.color)+'</td><td>'+esc(a.level)+' · '+genderName(a.gender)+'</td></tr>'}).join('')+
     '</tbody></table></div><div id="regMsg"></div>';
   const btn=$('saveRegs');if(btn)btn.onclick=saveRegistrations;
 }
@@ -590,7 +593,7 @@ async function saveRegistrations(){
   const e=state.currentEvent, selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id);
   const existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
   const colour=$('colour')?.value||'All';
-  const visibleIds=new Set((colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour)).map(a=>a.id));
+  const visibleIds=new Set((colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour)).filter(a=>a.gender===e.gender).map(a=>a.id));
   const toAdd=selected.filter(id=>!existing.has(id));
   const toDel=state.registrations.filter(r=>visibleIds.has(r.athlete_id)&&!selected.includes(r.athlete_id)).map(r=>r.id);
   $('saveRegs').disabled=true;
@@ -836,7 +839,7 @@ if(isStandalone())installBar?.classList.add('hidden');
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('./service-worker.js?v=14',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('./service-worker.js?v=15',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
