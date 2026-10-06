@@ -102,13 +102,34 @@ function aMap(){return new Map(state.attendance.map(x=>[x.athlete_id,x.status===
 function rMap(){return new Map(state.results.filter(x=>x.result_status==='finished').map(x=>[x.athlete_id,x.finish_position]))}
 function activeAthletes(){return state.athletes.filter(x=>x.active)}
 
-function fillLevels(){
-  const levels=[...new Set(state.races.map(x=>x.level))];
-  for(const id of ['attLevel','resLevel']) {
+function fillFilters(){
+  const roster=activeAthletes();
+  const preferred=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
+  const levels=[...new Set(roster.map(x=>x.level).filter(Boolean))].sort((a,b)=>{
+    const ia=preferred.indexOf(a),ib=preferred.indexOf(b);
+    if(ia>=0||ib>=0)return (ia<0?999:ia)-(ib<0?999:ib);
+    return a.localeCompare(b);
+  });
+  const genders=[...new Set(roster.map(x=>x.gender).filter(Boolean))];
+  const colors=['Blue','Red','White','Green'].filter(c=>roster.some(x=>x.color===c));
+
+  for(const id of ['attLevel','resLevel']){
     const prev=$(id).value;
-    $(id).innerHTML=levels.map(x=>'<option>'+esc(x)+'</option>').join('');
-    if(levels.includes(prev)) $(id).value=prev;
+    $(id).innerHTML=levels.map(x=>'<option value="'+esc(x)+'">'+esc(x)+'</option>').join('');
+    if(levels.includes(prev))$(id).value=prev;
   }
+  for(const id of ['attGender','resGender']){
+    const prev=$(id).value;
+    $(id).innerHTML=genders.map(g=>'<option value="'+g+'">'+(g==='F'?'Girls':'Boys')+'</option>').join('');
+    if(genders.includes(prev))$(id).value=prev;
+  }
+  const attPrev=$('attColor').value;
+  $('attColor').innerHTML=colors.map(x=>'<option>'+x+'</option>').join('');
+  if(colors.includes(attPrev))$('attColor').value=attPrev;
+
+  const resPrev=$('resColor').value;
+  $('resColor').innerHTML='<option value="All">All colours</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
+  if(resPrev==='All'||colors.includes(resPrev))$('resColor').value=resPrev;
 }
 async function loadAll(){
   const tid=state.tournament.id;
@@ -120,7 +141,7 @@ async function loadAll(){
   ]);
   if(rr.error)throw rr.error;if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
   state.races=rr.data||[];state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
-  fillLevels();state.pendingAttendance.clear();renderAll();
+  fillFilters();state.pendingAttendance.clear();renderAll();
 }
 function renderAll(){renderAttendance();renderResults();renderStandings()}
 
@@ -135,7 +156,7 @@ function statusFor(id){
 function renderAttendance(){
   const list=currentAttList();let p=0,a=0,u=0;
   for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
-  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Not marked',u]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Roster loaded',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
   $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id);return '<tr><td>'+esc(x.last_name)+'</td><td>'+esc(x.first_name)+'</td><td><span class="dot '+esc(x.color)+'"></span>'+esc(x.color)+'</td><td><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
 }
 window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
@@ -209,7 +230,7 @@ async function boot(){
     state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
     const {data:r,error}=await sb.from('athletics_cross_country_races').select('*').eq('tournament_id',TOURNAMENT_ID).order('level').order('gender');
     if(error)throw error;
-    state.races=r||[];fillLevels();
+    state.races=r||[];
     $('userPill').textContent='Public';
     $('loginView').classList.remove('hidden');$('appView').classList.remove('hidden');
     document.querySelector('[data-tab="attendance"]').classList.add('hidden');
