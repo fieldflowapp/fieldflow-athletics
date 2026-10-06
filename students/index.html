@@ -58,7 +58,8 @@ input,select,button{font:inherit}.input,input[type=file]{width:100%;background:#
 
       <h2 style="margin-top:20px">Sync roster</h2>
       <div class="sub">Edit the Google Sheet and sync it directly with Supabase.</div>
-      <button class="btn good" id="sheetSyncBtn" style="width:100%;margin-top:10px">Sync Google Sheet now</button>
+      <button class="btn good" id="sheetSyncBtn" style="width:100%;margin-top:10px">Google Sheet → Supabase</button>
+      <button class="btn primary" id="pushAllBtn" style="width:100%;margin-top:8px">Supabase → Google Sheet</button>
       <div id="sheetSyncMsg"></div>
       <div class="sub" style="margin-top:12px">CSV fallback</div>
       <div class="field"><label>Students CSV</label><input id="rosterFile" type="file" accept=".csv,text/csv"></div>
@@ -189,6 +190,25 @@ async function syncGoogleSheet(){
     msg($('sheetSyncMsg'),esc(detail),'bad');
   }finally{b.disabled=false}
 }
+async function pushSupabaseToSheet(){
+  const b=$('pushAllBtn');b.disabled=true;
+  try{
+    msg($('sheetSyncMsg'),'Sending Supabase roster to Google Sheets…');
+    const {data,error}=await sb.functions.invoke('athletics-roster-sync',{body:{action:'push_all'}});
+    if(error)throw error;
+    if(!data?.ok)throw new Error(data?.error||'Export failed');
+    msg($('sheetSyncMsg'),'Export complete: '+(data.exported??0)+' athletes written to Google Sheets.','good');
+  }catch(e){
+    let detail=e.message||String(e);
+    try{
+      if(e.context){
+        const j=await e.context.json();
+        detail=j?.error||j?.message||JSON.stringify(j);
+      }
+    }catch(_){}
+    msg($('sheetSyncMsg'),esc(detail),'bad');
+  }finally{b.disabled=false}
+}
 async function previewFile(){
   try{
     const f=$('rosterFile').files?.[0];if(!f)return;
@@ -236,7 +256,7 @@ async function signOut(){await sb.auth.signOut();location.reload()}
 $('loginBtn').onclick=signIn;$('logoutBtn').onclick=signOut;
 $('password').addEventListener('keydown',e=>{if(e.key==='Enter')signIn()});
 $('rosterFile').onchange=()=>{$('previewBtn').disabled=!$('rosterFile').files?.length;$('applyBtn').disabled=true;$('changePanel').classList.add('hidden')};
-$('sheetSyncBtn').onclick=syncGoogleSheet;$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
+$('sheetSyncBtn').onclick=syncGoogleSheet;$('pushAllBtn').onclick=pushSupabaseToSheet;$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
 boot().catch(e=>alert(e.message||String(e)));
 </script>
