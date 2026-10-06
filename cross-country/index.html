@@ -247,20 +247,20 @@ async function clearSelectedCrossCountryData(){
     if(race)affectedGroups.set(race.id+'|'+athlete.color,{race,color:athlete.color});
   }
 
-  for(const {race,color} of affectedGroups.values()){
-    const presentIds=state.attendance
-      .filter(a=>a.race_id===race.id&&a.color===color&&a.status==='present'&&!selected.has(a.athlete_id))
-      .map(a=>a.athlete_id);
-    const {error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:color,p_present_ids:presentIds});
-    if(error){$('clearSelected').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
-  }
-
   for(const id of ids){
     const result=state.results.find(r=>r.athlete_id===id&&r.result_status==='finished');
     if(result?.race_id){
       const {error}=await sb.rpc('cross_country_save_finish',{p_race_id:result.race_id,p_athlete_id:id,p_position:null});
       if(error){$('clearSelected').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
     }
+  }
+
+  for(const {race,color} of affectedGroups.values()){
+    const presentIds=state.attendance
+      .filter(a=>a.race_id===race.id&&a.color===color&&a.status==='present'&&!selected.has(a.athlete_id))
+      .map(a=>a.athlete_id);
+    const {error}=await sb.rpc('cross_country_save_attendance',{p_race_id:race.id,p_color:color,p_present_ids:presentIds});
+    if(error){$('clearSelected').disabled=false;msg($('attMsg'),esc(error.message),'badmsg');return}
   }
 
   $('clearSelected').disabled=false;
