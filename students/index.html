@@ -27,8 +27,44 @@ input,select,button{font:inherit}.input,input[type=file]{width:100%;background:#
 .hidden{display:none!important}.pill{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:7px 9px;color:#d8e8ef}
 @media(max-width:850px){.grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
+
+<style>
+#iosInstallModal{position:fixed;inset:0;z-index:99999;display:none;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);padding:18px}
+#iosInstallModal.show{display:flex}
+#iosInstallModal .ios-install-card{width:min(520px,100%);background:#0b2230;color:#fff;border:1px solid #285067;border-radius:20px;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#iosInstallModal .ios-install-head{display:flex;gap:12px;align-items:center}
+#iosInstallModal img{width:52px;height:52px;border-radius:12px;object-fit:cover}
+#iosInstallModal h3{margin:0 0 3px;font-size:18px}
+#iosInstallModal p{margin:12px 0 0;color:#c9dbe4;font-size:14px;line-height:1.45}
+#iosInstallModal .ios-steps{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:9px}
+#iosInstallModal .ios-steps li{display:flex;gap:10px;align-items:flex-start;background:#071d2d;border:1px solid #17384b;border-radius:12px;padding:10px;font-size:14px}
+#iosInstallModal .ios-num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0b5fff;font-weight:900;flex:0 0 auto}
+#iosInstallModal .ios-actions{display:flex;gap:8px;margin-top:14px}
+#iosInstallModal button{flex:1;border:1px solid #285067;border-radius:11px;padding:11px 12px;font-weight:800;cursor:pointer}
+#iosInstallDone{background:#0b5fff;color:#fff;border-color:#0b5fff!important}
+#iosInstallLater{background:#0d2a3a;color:#fff}
+</style>
 </head>
 <body>
+
+<div id="iosInstallModal" aria-hidden="true">
+  <div class="ios-install-card" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle">
+    <div class="ios-install-head">
+      <img src="../icons/icon-192.png" alt="FieldFlow Athletics">
+      <div><h3 id="iosInstallTitle">Instala FieldFlow Athletics</h3><div style="color:#9db4bf;font-size:12px">Acceso directo desde tu iPhone</div></div>
+    </div>
+    <p>En iPhone la instalación se hace desde el menú Compartir de Safari.</p>
+    <ol class="ios-steps">
+      <li><span class="ios-num">1</span><span>Toca <b>Compartir</b> <span style="font-size:19px">⬆️</span> en Safari.</span></li>
+      <li><span class="ios-num">2</span><span>Selecciona <b>Agregar a pantalla de inicio</b>.</span></li>
+      <li><span class="ios-num">3</span><span>Toca <b>Agregar</b>.</span></li>
+    </ol>
+    <div class="ios-actions">
+      <button id="iosInstallLater" type="button">Ahora no</button>
+      <button id="iosInstallDone" type="button">Entendido</button>
+    </div>
+  </div>
+</div>
 <div class="topbar">
   <div>
     <div class="brand"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"><div><h1>FieldFlow Athletics</h1><div class="sub">Student Database</div></div></div>
@@ -259,6 +295,22 @@ $('rosterFile').onchange=()=>{$('previewBtn').disabled=!$('rosterFile').files?.l
 $('sheetSyncBtn').onclick=syncGoogleSheet;$('pushAllBtn').onclick=pushSupabaseToSheet;$('previewBtn').onclick=previewFile;$('applyBtn').onclick=applySync;$('refreshBtn').onclick=loadRoster;$('search').oninput=renderRoster;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
 boot().catch(e=>alert(e.message||String(e)));
+</script>
+
+<script>
+(function(){
+  const ua=navigator.userAgent||'';
+  const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  const standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  const modal=document.getElementById('iosInstallModal');
+  if(!isIOS||standalone||!modal)return;
+  const key='ffAthleticsIosInstallSeenV1';
+  const show=()=>{if(localStorage.getItem(key)!=='1'){modal.classList.add('show');modal.setAttribute('aria-hidden','false')}};
+  window.addEventListener('load',()=>setTimeout(show,500));
+  const close=()=>{localStorage.setItem(key,'1');modal.classList.remove('show');modal.setAttribute('aria-hidden','true')};
+  document.getElementById('iosInstallDone')?.addEventListener('click',close);
+  document.getElementById('iosInstallLater')?.addEventListener('click',close);
+})();
 </script>
 </body>
 </html>
