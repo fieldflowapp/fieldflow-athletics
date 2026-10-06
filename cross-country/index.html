@@ -91,7 +91,7 @@
 
     <section id="attendancePane" class="pad">
       <div class="filters">
-        <div class="field"><label>Category</label><select id="attLevel"></select></div>
+        <div class="field"><label>Level</label><select id="attLevel"></select></div>
         <div class="field"><label>Gender</label><select id="attGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
         <div class="field"><label>Colour</label><select id="attColor"><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
@@ -103,7 +103,7 @@
 
     <section id="resultsPane" class="pad hidden">
       <div class="filters">
-        <div class="field"><label>Category</label><select id="resLevel"></select></div>
+        <div class="field"><label>Level</label><select id="resLevel"></select></div>
         <div class="field"><label>Gender</label><select id="resGender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
         <div class="field"><label>Colour</label><select id="resColor"><option value="All">All colours</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
@@ -188,17 +188,37 @@ function syncResultsFilterOptions(){
   $('resColor').innerHTML='<option value="All">All colours</option>'+colors.map(x=>'<option>'+x+'</option>').join('');
   if(prevC==='All'||colors.includes(prevC))$('resColor').value=prevC;
 }
+async function fetchAllRows(table,columns,tid,orderColumn=null){
+  const pageSize=1000;
+  let from=0,all=[];
+  while(true){
+    let q=sb.from(table).select(columns).eq('tournament_id',tid).range(from,from+pageSize-1);
+    if(orderColumn)q=q.order(orderColumn);
+    const {data,error}=await q;
+    if(error)throw error;
+    const rows=data||[];
+    all.push(...rows);
+    if(rows.length<pageSize)break;
+    from+=pageSize;
+  }
+  return all;
+}
 async function loadAll(){
   const tid=state.tournament.id;
-  const [rr,a,att,res]=await Promise.all([
+  const [rr,athletes,attendance,results]=await Promise.all([
     sb.from('athletics_cross_country_races').select('*').eq('tournament_id',tid).order('level').order('gender'),
-    sb.from('athletics_athletes').select('id,external_code,last_name,first_name,gender,level,color,active').eq('tournament_id',tid).order('last_name'),
-    sb.from('athletics_cross_country_attendance').select('*').eq('tournament_id',tid),
-    sb.from('athletics_cross_country_results').select('*').eq('tournament_id',tid)
+    fetchAllRows('athletics_athletes','id,external_code,last_name,first_name,gender,level,color,active',tid,'last_name'),
+    fetchAllRows('athletics_cross_country_attendance','*',tid),
+    fetchAllRows('athletics_cross_country_results','*',tid)
   ]);
-  if(rr.error)throw rr.error;if(a.error)throw a.error;if(att.error)throw att.error;if(res.error)throw res.error;
-  state.races=rr.data||[];state.athletes=a.data||[];state.attendance=att.data||[];state.results=res.data||[];
-  fillFilters();state.pendingAttendance.clear();renderAll();
+  if(rr.error)throw rr.error;
+  state.races=rr.data||[];
+  state.athletes=athletes;
+  state.attendance=attendance;
+  state.results=results;
+  fillFilters();
+  state.pendingAttendance.clear();
+  renderAll();
 }
 function renderAll(){renderAttendance();renderResults();renderStandings()}
 
@@ -213,7 +233,7 @@ function statusFor(id){
 function renderAttendance(){
   const list=currentAttList();let p=0,a=0,u=0;
   for(const x of list){const s=statusFor(x.id);if(s===true)p++;else if(s===false)a++;else u++}
-  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Roster loaded',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
+  $('attStats').innerHTML=[['Students',list.length],['Present',p],['Absent',a],['Database',activeAthletes().length]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
   $('selectHeader').classList.toggle('hidden',!state.selectionMode);document.querySelector('.attendanceTable')?.classList.toggle('selection-on',state.selectionMode);
   $('attBody').innerHTML=list.map(x=>{const s=statusFor(x.id),sel=state.selectedAthletes.has(x.id);return '<tr>'+(state.selectionMode?'<td class="selectCol col-select"><input class="selectBox" type="checkbox" data-select-athlete="'+x.id+'" '+(sel?'checked':'')+'></td>':'')+'<td class="col-surname">'+esc(x.last_name)+'</td><td class="col-name">'+esc(x.first_name)+'</td><td class="col-colour" title="'+esc(x.color)+'"><span class="dot '+esc(x.color)+'"></span></td><td class="col-status"><div class="statusBtns"><button class="btn '+(s===true?'onP':'unset')+'" onclick="setAtt(\''+x.id+'\',true)">P</button><button class="btn '+(s===false?'onA':'unset')+'" onclick="setAtt(\''+x.id+'\',false)">A</button></div></td></tr>'}).join('');
   document.querySelectorAll('[data-select-athlete]').forEach(el=>el.onchange=()=>{if(el.checked)state.selectedAthletes.add(el.dataset.selectAthlete);else state.selectedAthletes.delete(el.dataset.selectAthlete);updateSelectionUI()});
