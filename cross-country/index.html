@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=21">
+<link rel="manifest" href="../manifest.webmanifest?v=22">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v21</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v22</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -100,7 +100,7 @@
         <div class="field"><label>Colour</label><select id="attColor"><option value="All">All Colors</option><option>Blue</option><option>Red</option><option>White</option><option>Green</option></select></div>
       </div>
       <div class="stats" id="attStats"></div>
-      <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div><div class="selectionBar"><button class="btn warn" id="clearAttendance">Clear Attendance</button></div>
+      <div class="row" style="margin-bottom:10px"><button class="btn good" id="allPresent">Mark all present</button><button class="btn bad" id="allAbsent">Mark all absent</button><button class="btn primary" id="saveAttendance">Save attendance</button></div><div class="selectionBar"><button class="btn warn" id="clearAttendance">Clear Status</button></div>
       <div id="attMsg"></div>
       <div class="tablewrap"><table class="table attendanceTable"><thead><tr><th id="selectHeader" class="selectCol col-select hidden">Select</th><th class="col-surname">Surname</th><th class="col-name">Name</th><th class="col-colour">Colour</th><th class="col-status">Status</th></tr></thead><tbody id="attBody"></tbody></table></div>
     </section>
@@ -299,8 +299,8 @@ async function clearAttendance(){
   const ids=list.map(x=>x.id);
   const hasSaved=list.some(x=>state.attendance.some(a=>a.athlete_id===x.id));
   const hasPending=list.some(x=>state.pendingAttendance.has(x.id));
-  if(!hasSaved&&!hasPending){msg($('attMsg'),'Attendance is already blank for these filters.','warnmsg');return}
-  const ok=confirm('Clear attendance for '+ids.length+' student'+(ids.length===1?'':'s')+' in the current filters?\n\nThis will remove P/A selections and leave attendance blank. The master student database will not be changed.');
+  if(!hasSaved&&!hasPending){msg($('attMsg'),'Status is already blank for these filters.','warnmsg');return}
+  const ok=confirm('Clear status for '+ids.length+' student'+(ids.length===1?'':'s')+' in the current filters?\n\nThis will remove P/A selections and leave Status blank. The master student database will not be changed.');
   if(!ok)return;
   $('clearAttendance').disabled=true;
 
@@ -318,7 +318,7 @@ async function clearAttendance(){
 
   $('clearAttendance').disabled=false;
   await loadAll();
-  msg($('attMsg'),'Attendance cleared. P/A is blank for the current filters.','goodmsg');
+  msg($('attMsg'),'Status cleared. P/A is blank for the current filters.','goodmsg');
 }
 
 async function saveAttendance(){
@@ -470,7 +470,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=21',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=22',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
