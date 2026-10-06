@@ -91,7 +91,7 @@
 @media(max-width:560px){.modalgrid{grid-template-columns:1fr}.modalcard{max-height:92vh;overflow:auto}}
 </style>
 
-  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="manifest" href="../manifest.webmanifest?v=12">
   <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -556,7 +556,7 @@ wire();boot();
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=12',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
