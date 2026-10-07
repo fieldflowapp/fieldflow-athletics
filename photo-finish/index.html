@@ -10,7 +10,7 @@
 :root{--navy:#061722;--navy2:#071d2d;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--muted:#9fb0bf}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
 .app{min-height:100dvh;background:var(--navy);display:flex;flex-direction:column}
-header{padding:10px 12px;background:var(--navy2);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;border-bottom:1px solid #ffffff18}.backBtn{background:#173247;color:#fff;padding:9px 11px;border-radius:10px;font-size:13px}.brand{text-align:center}
+header{padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:var(--navy2);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-bottom:1px solid #ffffff18}.backBtn{background:#173247;color:#fff;padding:13px 11px;border-radius:12px;font-size:14px;width:100%}.brand{text-align:left}
 .brand{font-weight:900}.brand span{color:var(--cyan)}.small{font-size:12px;color:var(--muted)}
 #heatContext{display:none;padding:9px 12px;background:#0a2b3f;border-bottom:1px solid #ffffff18;font-size:13px}#heatContext.show{display:block}
 main{flex:1;display:flex;flex-direction:column;min-height:0}.stage{position:relative;flex:1;min-height:330px;background:#000;overflow:hidden}
@@ -44,7 +44,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 .pendingTime{color:var(--orange)!important}
 </style>
 
-  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="manifest" href="../manifest.webmanifest?v=23">
   <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,7 +53,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 </head>
 <body>
 <div class="app">
-<header><button id="backBtn" class="backBtn">← BACK</button><div class="brand">FieldFlow <span>Photo Finish</span></div><div class="small">V2</div></header>
+<header><div class="brand">FieldFlow <span>Photo Finish</span></div><div class="small">V3</div></header>
 <div id="heatContext"></div>
 <main>
 <section class="stage">
@@ -87,6 +87,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
     <option value="120">120 FPS · High speed</option>
   </select>
 </div>
+<button id="backBtn" class="backBtn" type="button">← BACK</button>
 <div id="qualityBadge" class="qualityBadge"></div><div class="status" id="status">Cargando…</div>
 </section>
 </main>
@@ -285,7 +286,7 @@ async function loadHeat(){
     const athleteIds=regs.map(r=>r.athlete_id).filter(Boolean);
     let athletes=[];if(athleteIds.length){const q=await sb.from('athletics_athletes').select('*').in('id',athleteIds);if(q.error)throw q.error;athletes=q.data||[]}
     heatEntries=(entries||[]).map(en=>{const reg=regs.find(r=>r.id===en.registration_id);const athlete=reg?athletes.find(a=>a.id===reg.athlete_id):null;return {...en,athlete}});
-    heatContext.innerHTML='<b>'+esc(ev.name)+'</b> · Heat '+esc(h.heat_number)+'<br><span class="small">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
+    heatContext.innerHTML='<b>'+esc(ev.name)+'</b> · '+(h.stage==='final'?'FINAL':'Heat '+esc(h.heat_number))+'<br><span class="small">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
     renderLanes();
   }catch(err){heatContext.innerHTML='<span style="color:#ff9f1c">Load error: '+esc(err.message||err)+'</span>';heatContext.classList.add('show')}
 }
@@ -407,7 +408,7 @@ openCamera();
 </script>
 
 <script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js').catch(console.error));}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js?v=23').catch(console.error));}
 </script>
 </body>
 </html>
