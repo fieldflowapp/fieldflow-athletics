@@ -94,7 +94,7 @@
 @media(max-width:560px){.install-app-bar{align-items:flex-start}.install-app-actions{flex-direction:column}.install-app-actions button{padding:8px 10px}}
 </style>
 
-  <link rel="manifest" href="./manifest.webmanifest?v=16">
+  <link rel="manifest" href="./manifest.webmanifest?v=23">
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-192.png">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -156,7 +156,7 @@
 <div id="appView" class="shell hidden">
   <div class="topbar">
     <div><div class="brand"><div class="mark"><img src="./icons/icon-192.png" alt="FieldFlow Athletics"></div><div><h1>FieldFlow Athletics</h1><div class="sub">Athletics Admin Console</div></div></div><div style="display:flex;gap:7px;margin-top:8px"><a href="./" style="color:#fff;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;background:#0b5fff">Track</a><a href="./field/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Field</a><a href="./students/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Students</a><a href="./entries/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Entries</a><a id="printLink" href="./print/" target="_blank" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Print</a><a href="./cross-country/" style="color:#d7e8f0;text-decoration:none;border:1px solid #285067;border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800">Cross Country</a></div></div>
-    <div class="flex"><span class="pill">Build 16</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
+    <div class="flex"><span class="pill">Build 23</span><span id="userPill" class="pill"></span><button class="btn ghost mini" id="logoutBtn">Logout</button></div>
   </div>
 
   <div class="grid">
@@ -713,7 +713,7 @@ async function renderFinal(){
   head+='</div><div id="finalMsg"></div>';
   if(!finalHeat){pane.innerHTML=head+'<div class="empty">Final not created yet. Complete all heats first.</div>';wireFinalButtons();return}
   const ens=entriesForHeat(finalHeat.id).sort((a,b)=>(a.lane??999)-(b.lane??999));
-  pane.innerHTML=head+'<div class="heat"><div class="heathead"><b>FINAL · '+esc(e.name)+'</b><span class="badge">'+finalHeat.status+'</span></div><div class="heatbody"><div class="tablewrap"><table><thead><tr><th>Lane</th><th>Athlete</th><th>Colour</th><th>Status</th><th>Official time</th><th>Admin lane</th></tr></thead><tbody>'+
+  pane.innerHTML=head+'<div class="heat" id="heat-'+finalHeat.id+'"><div class="heathead"><b>FINAL · '+esc(e.name)+'</b><div class="flex"><a class="btn mini primary" href="./photo-finish/?event='+encodeURIComponent(e.id)+'&heat='+encodeURIComponent(finalHeat.id)+'&return='+encodeURIComponent('../?event='+encodeURIComponent(e.id)+'&category='+encodeURIComponent(e.category)+'&gender='+encodeURIComponent(e.gender)+'&tab=final#heat-'+encodeURIComponent(finalHeat.id))+'">📷 Photo Finish</a><span class="badge">'+finalHeat.status+'</span></div></div><div class="heatbody"><div class="tablewrap"><table><thead><tr><th>Lane</th><th>Athlete</th><th>Colour</th><th>Status</th><th>Official time</th><th>Admin lane</th></tr></thead><tbody>'+
   ens.map(en=>{const a=athleteForEntry(en)||{};return '<tr data-final-entry="'+en.id+'"><td class="lane">'+(en.lane??'—')+'</td><td><b>'+esc(a.last_name||'')+', '+esc(a.first_name||'')+'</b></td><td>'+colorDot(a.color||'')+'</td><td><select class="fStatus"><option value="scheduled" '+(en.status==='scheduled'?'selected':'')+'>Scheduled</option><option value="finished" '+(en.status==='finished'?'selected':'')+'>Finished</option><option value="dns" '+(en.status==='dns'?'selected':'')+'>DNS</option><option value="dnf" '+(en.status==='dnf'?'selected':'')+'>DNF</option><option value="dq" '+(en.status==='dq'?'selected':'')+'>DQ</option></select></td><td>'+(usesSplitTime(e)?splitTimeInput('f',en.official_time):'<input class="timeinput fTime" type="number" step="0.001" min="0" inputmode="decimal" value="'+(en.official_time??'')+'">')+'</td><td><select class="fLane">'+Array.from({length:(e.finalists_count||8)},(_,i)=>i+1).map(n=>'<option value="'+n+'" '+(en.lane===n?'selected':'')+'>'+n+'</option>').join('')+'</select></td></tr>'}).join('')+
   '</tbody></table></div><div class="toolbar" style="margin-top:10px"><button class="btn good" id="saveFinal">Save final</button><button class="btn warn" id="completeFinal">'+(finalHeat.status==='completed'?'Reopen final':'Complete final')+'</button></div></div></div><h2>Official ranking</h2><div id="finalRanking">Loading…</div>';
   wireFinalButtons();
@@ -842,7 +842,7 @@ if(isStandalone())installBar?.classList.add('hidden');
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('./service-worker.js?v=16',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('./service-worker.js?v=23',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
