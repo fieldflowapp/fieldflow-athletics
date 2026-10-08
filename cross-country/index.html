@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=22">
+<link rel="manifest" href="../manifest.webmanifest?v=24">
 <title>FieldFlow Athletics · Cross Country</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -74,7 +74,7 @@
       <a href="../">Track</a><a href="../field/">Field</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v22</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">v24</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -418,9 +418,7 @@ async function boot(){
   $('userPill').textContent=session.user.email||'Admin';
   $('loginView').classList.add('hidden');
   $('appView').classList.remove('hidden');
-  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
-  if(error)throw error;
-  state.tournament=t;
+  state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
   await loadAll();
   $('userPill').textContent=(session.user.email||'Admin')+' · LIVE DB';
 }
@@ -470,7 +468,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=22',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=24',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
