@@ -426,7 +426,42 @@ openCamera();
 </script>
 
 <script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js?v=24').catch(console.error));}
+(function(){
+  const VERSION_URL='../version.json';
+  let loadedBuild=null,checking=false,reloading=false;
+  async function checkVersion(){
+    if(checking||reloading)return;
+    checking=true;
+    try{
+      const r=await fetch(VERSION_URL+'?t='+Date.now(),{cache:'no-store'});
+      if(!r.ok)return;
+      const v=await r.json();
+      const badge=document.getElementById('buildBadge');
+      if(badge)badge.textContent='Single Screen · '+String(v.build||'live').slice(0,7);
+      if(loadedBuild===null){loadedBuild=v.build||null;return}
+      if(v.build&&loadedBuild&&v.build!==loadedBuild){
+        reloading=true;
+        const reg=await navigator.serviceWorker.getRegistration('../');
+        if(reg)await reg.update();
+        location.reload();
+      }
+    }catch(e){console.warn('Version check failed',e)}
+    finally{checking=false}
+  }
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',async()=>{
+      try{
+        const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
+        await reg.update();
+      }catch(e){console.error(e)}
+      checkVersion();
+      setInterval(checkVersion,60000);
+    });
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloading){reloading=true;location.reload()}});
+  }else window.addEventListener('load',checkVersion);
+  window.addEventListener('focus',checkVersion);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersion()});
+})();
 </script>
 </body>
 </html>
