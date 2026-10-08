@@ -2,24 +2,24 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#061722">
 <title>FieldFlow Athletics · Photo Finish</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--navy:#061722;--navy2:#071d2d;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--muted:#9fb0bf}
-*{box-sizing:border-box}html,body{margin:0;height:100%;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif}
-.app{min-height:100dvh;background:var(--navy);display:flex;flex-direction:column}
-header{padding:calc(10px + env(safe-area-inset-top)) 12px 10px;background:var(--navy2);display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-bottom:1px solid #ffffff18}.backBtn{background:#173247;color:#fff;padding:13px 11px;border-radius:12px;font-size:14px;width:100%}.brand{text-align:left}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000;color:#fff;font-family:Arial,Helvetica,sans-serif;overscroll-behavior:none;touch-action:manipulation}
+.app{height:100dvh;max-height:100dvh;overflow:hidden;background:var(--navy);display:flex;flex-direction:column}
+header{padding:calc(6px + env(safe-area-inset-top)) 10px 6px;background:var(--navy2);display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;border-bottom:1px solid #ffffff18;flex:0 0 auto}.backBtn{background:#173247;color:#fff;padding:11px 10px;border-radius:11px;font-size:14px;width:100%}.brand{text-align:left}
 .brand{font-weight:900}.brand span{color:var(--cyan)}.small{font-size:12px;color:var(--muted)}
-#heatContext{display:none;padding:9px 12px;background:#0a2b3f;border-bottom:1px solid #ffffff18;font-size:13px}#heatContext.show{display:block}
-main{flex:1;display:flex;flex-direction:column;min-height:0}.stage{position:relative;flex:1;min-height:330px;background:#000;overflow:hidden}
+#heatContext{display:none;padding:6px 10px;background:#0a2b3f;border-bottom:1px solid #ffffff18;font-size:12px;flex:0 0 auto}#heatContext.show{display:block}
+main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}.stage{position:relative;flex:1 1 auto;min-height:0;background:#000;overflow:hidden}
 video{width:100%;height:100%;object-fit:cover;background:#000}#reviewVideo{display:none}
 .finish-line{position:absolute;top:0;bottom:0;left:50%;width:3px;background:var(--red);box-shadow:0 0 15px var(--red);pointer-events:none}
 .finish-line:after{content:"META";position:absolute;top:10px;left:8px;font-size:11px;font-weight:900;background:#ff4d4dcc;padding:3px 6px;border-radius:5px}
 .timerbox{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);background:#000a;padding:8px 14px;border-radius:12px;text-align:center}
 #timer{font-size:34px;font-weight:900;font-variant-numeric:tabular-nums}.mode{font-size:12px;color:#ddd}
-.controls,.review{background:var(--navy2);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:grid;gap:9px}
+.controls,.review{background:var(--navy2);padding:7px 10px calc(7px + env(safe-area-inset-bottom));display:grid;gap:7px;flex:0 0 auto}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
 button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:15px}button:disabled{opacity:.35}
 .primary{background:var(--green);color:#022016}.record{background:var(--red);color:#fff}.dark{background:#173247;color:#fff}.orange{background:var(--orange);color:#211100}.cameraBtn{background:var(--cyan);color:#002033}
@@ -29,19 +29,23 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 .captureSettings{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:center;background:#0a2b3f;border:1px solid #1b4e67;border-radius:10px;padding:8px 10px}
 .captureSettings label{font-size:12px;color:#d9f7ff;font-weight:800}
 .captureSettings select{width:100%;background:#061c2a;border:1px solid #21465a;color:#fff;border-radius:9px;padding:9px 10px;font-size:15px}
-.review{display:none}.review.show{display:grid}.reviewTime{text-align:center;font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}
+.review{display:none;max-height:48dvh;overflow:hidden}.review.show{display:grid}.reviewTime{text-align:center;font-size:27px;font-weight:900;font-variant-numeric:tabular-nums}
 .playbackRow{display:grid;grid-template-columns:64px minmax(0,1fr) 64px;gap:10px;align-items:center}
 .playbackRow .reviewTime{min-width:0}
 .playBtn,.pauseBtn{min-height:48px;padding:10px 8px;font-size:20px;border-radius:12px}
 .playBtn{background:var(--green);color:#022016}
 .pauseBtn{background:#173247;color:#fff}
 .slider{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center}input[type=range]{width:100%}
-#assignPanel{display:none;border-top:1px solid #ffffff18;padding-top:9px}#assignPanel.show{display:block}.assignTitle{text-align:center;font-weight:900;margin-bottom:8px}
-.lanes{display:grid;grid-template-columns:1fr 1fr;gap:8px}.laneBtn{background:#102f44;color:#fff;text-align:left;border:1px solid #ffffff18}.laneBtn.saved{background:#153b31;border-color:var(--green)}
+#assignPanel{display:none}#assignPanel.show{display:block;position:fixed;left:10px;right:10px;bottom:calc(74px + env(safe-area-inset-bottom));z-index:120;background:#071d2df5;border:1px solid #285067;border-radius:14px;padding:10px;box-shadow:0 18px 50px #000a;max-height:45dvh;overflow:auto}.assignTitle{text-align:center;font-weight:900;margin-bottom:8px}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:7px}.laneBtn{background:#102f44;color:#fff;text-align:left;border:1px solid #ffffff18;padding:10px}.laneBtn.saved{background:#153b31;border-color:var(--green)}
 .laneNo{font-size:17px;color:var(--cyan);font-weight:900}.athlete{display:block;font-size:11px;color:#d8e2e9;margin-top:2px}.savedTime{display:block;font-size:12px;color:#7cf0bf;margin-top:3px}
-.marks{max-height:120px;overflow:auto;border-top:1px solid #ffffff18}.markRow{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
-.saveResults{display:none;background:var(--green);color:#022016;font-size:17px;padding:15px 12px}.saveResults.show{display:block}
+.marks{max-height:86px;overflow:auto;border-top:1px solid #ffffff18;display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}.markRow{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}
+.saveResults{display:none;background:var(--green);color:#022016;font-size:16px;padding:12px}.saveResults.show{display:block;position:sticky;bottom:0;z-index:30}
 .pendingTime{color:var(--orange)!important}
+body.reviewing .raceControls,body.reviewing .captureSettings,body.reviewing #qualityBadge{display:none!important}
+body.reviewing .stage{min-height:0}
+body.reviewing .controls{grid-template-columns:1fr}
+@media(max-width:430px){header{font-size:13px}.small{font-size:10px}#timer{font-size:29px}.playbackRow{grid-template-columns:54px minmax(0,1fr) 54px}.row3 button{padding:11px 6px;font-size:12px}.controls,.review{padding-left:8px;padding-right:8px}.lanes{grid-template-columns:1fr 1fr}}
 </style>
 
   <link rel="manifest" href="../manifest.webmanifest?v=24">
@@ -53,7 +57,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 </head>
 <body>
 <div class="app">
-<header><div class="brand">FieldFlow <span>Photo Finish</span></div><div class="small">V3 · B24</div></header>
+<header><div class="brand">FieldFlow <span>Photo Finish</span></div><div class="small" id="buildBadge">Single Screen</div></header>
 <div id="heatContext"></div>
 <main>
 <section class="stage">
@@ -77,8 +81,10 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 
 <section class="controls">
 <button id="cameraBtn" class="cameraBtn">ACTIVATE CAMERA</button>
+<div class="raceControls">
 <div class="row"><button id="startBtn" class="primary" disabled>START</button><button id="recordBtn" class="record" disabled>● RECORD</button></div>
 <div class="row"><button id="stopBtn" class="dark" disabled>STOP</button><button id="reviewBtn" class="dark" disabled>REVIEW</button></div>
+</div>
 <div class="captureSettings">
   <label for="fpsSelect">FPS</label>
   <select id="fpsSelect">
@@ -87,7 +93,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
     <option value="120">120 FPS · High speed</option>
   </select>
 </div>
-<button id="backBtn" class="backBtn" type="button">← BACK</button>
+<div class="row"><button id="backBtn" class="backBtn" type="button">← BACK</button><button id="returnLiveBtn" class="dark" type="button" disabled>LIVE CAMERA</button></div>
 <div id="qualityBadge" class="qualityBadge"></div><div class="status" id="status">Cargando…</div>
 </section>
 </main>
@@ -97,7 +103,7 @@ button{border:0;border-radius:12px;padding:14px 10px;font-weight:900;font-size:1
 document.addEventListener('DOMContentLoaded',()=> {
 const $=id=>document.getElementById(id);
 const camera=$('camera'),reviewVideo=$('reviewVideo'),timer=$('timer'),mode=$('mode'),status=$('status');
-const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),stopBtn=$('stopBtn'),reviewBtn=$('reviewBtn'),backBtn=$('backBtn'),qualityBadge=$('qualityBadge'),fpsSelect=$('fpsSelect');
+const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),stopBtn=$('stopBtn'),reviewBtn=$('reviewBtn'),backBtn=$('backBtn'),returnLiveBtn=$('returnLiveBtn'),qualityBadge=$('qualityBadge'),fpsSelect=$('fpsSelect');
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
@@ -236,7 +242,19 @@ stopBtn.addEventListener('click',()=>{
 reviewBtn.addEventListener('click',()=>{
   if(!videoUrl)return;
   camera.style.display='none';reviewVideo.style.display='block';reviewPanel.classList.add('show');
+  document.body.classList.add('reviewing');
+  returnLiveBtn.disabled=false;
   reviewVideo.currentTime=0;scrubber.value=0;updateReview();mode.textContent='REVIEW';
+});
+returnLiveBtn.addEventListener('click',()=>{
+  reviewVideo.pause();
+  reviewVideo.style.display='none';
+  camera.style.display='block';
+  reviewPanel.classList.remove('show');
+  assignPanel.classList.remove('show');
+  document.body.classList.remove('reviewing');
+  returnLiveBtn.disabled=true;
+  mode.textContent='Cámara lista';
 });
 function currentMs(){return recordRaceMs+(reviewVideo.currentTime*1000)}
 function updateReview(){
