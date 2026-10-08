@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071d2d">
-<link rel="manifest" href="../manifest.webmanifest?v=14">
+<link rel="manifest" href="../manifest.webmanifest?v=24">
 <title>FieldFlow Athletics · Students</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -122,6 +122,7 @@ input,select,button{font:inherit}.input,input[type=file]{width:100%;background:#
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const TOURNAMENT_ID='204a8f52-5525-4077-85e4-1d3811d68323';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 let state={tournament:null,athletes:[],pending:[],diff:null};
@@ -201,10 +202,15 @@ function renderRoster(){
   $('stats').innerHTML=[['Total',state.athletes.length],['Active',active],['Levels',levels],['Colours',colors]].map(([k,v])=>'<div class="stat"><b>'+v+'</b><span>'+k+'</span></div>').join('');
 }
 async function loadRoster(){
-  const {data,error}=await sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).order('external_code');
-  if(error)throw error;
-  state.athletes=data||[];renderRoster();
-  $('lastRefresh').textContent='Updated '+new Date().toLocaleTimeString();
+  const pageSize=1000;let from=0,all=[];
+  while(true){
+    const {data,error}=await sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).order('external_code').range(from,from+pageSize-1);
+    if(error)throw error;
+    const rows=data||[];all.push(...rows);
+    if(rows.length<pageSize)break;from+=pageSize;
+  }
+  state.athletes=all;renderRoster();
+  $('lastRefresh').textContent='LIVE DB · '+all.length+' students · '+new Date().toLocaleTimeString();
 }
 async function syncGoogleSheet(){
   const b=$('sheetSyncBtn');b.disabled=true;
@@ -277,12 +283,14 @@ async function applySync(){
   finally{b.disabled=false}
 }
 async function boot(){
-  const {data:{session}}=await sb.auth.getSession();
+  const {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
   if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
-  $('userPill').textContent=session.user.email||'Admin';
+  $('userPill').textContent=(session.user.email||'Admin')+' · CONNECTING';
   $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
-  if(error)throw error;state.tournament=t;await loadRoster();
+  state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
+  await loadRoster();
+  $('userPill').textContent=(session.user.email||'Admin')+' · LIVE DB';
 }
 async function signIn(){
   const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
@@ -324,7 +332,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=14',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=24',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
