@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071d2d">
-<link rel="manifest" href="../manifest.webmanifest?v=14">
+<link rel="manifest" href="../manifest.webmanifest?v=24">
 <title>FieldFlow Athletics · Event Registration</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -130,6 +130,7 @@ tfoot td{position:sticky;bottom:0;background:#eaf3f8;font-weight:900;color:#0d26
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const TOURNAMENT_ID='204a8f52-5525-4077-85e4-1d3811d68323';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const state={tournament:null,events:[],athletes:[],registrations:[],busy:new Set()};
@@ -181,23 +182,37 @@ async function clearVisible(){
   for(const r of regs){const {error}=await sb.from('athletics_registrations').delete().eq('id',r.id);if(error){alert(error.message);break}state.registrations=state.registrations.filter(x=>x.id!==r.id)}
   $('saveStatus').textContent='Auto-save ON';$('saveStatus').className='pill saved';render();
 }
+async function fetchAllRows(table,columns,tid,extra){
+  const pageSize=1000;let from=0,all=[];
+  while(true){
+    let q=sb.from(table).select(columns).eq('tournament_id',tid).range(from,from+pageSize-1);
+    if(extra)q=extra(q);
+    const {data,error}=await q;if(error)throw error;
+    const rows=data||[];all.push(...rows);
+    if(rows.length<pageSize)break;from+=pageSize;
+  }
+  return all;
+}
 async function reloadData(){
-  const [a,e,r]=await Promise.all([
-    sb.from('athletics_athletes').select('*').eq('tournament_id',state.tournament.id).eq('active',true),
-    sb.from('athletics_events').select('*').eq('tournament_id',state.tournament.id),
-    sb.from('athletics_registrations').select('*').eq('tournament_id',state.tournament.id)
+  const tid=state.tournament.id;
+  const [athletes,events,registrations]=await Promise.all([
+    fetchAllRows('athletics_athletes','*',tid,q=>q.eq('active',true)),
+    fetchAllRows('athletics_events','*',tid),
+    fetchAllRows('athletics_registrations','*',tid)
   ]);
-  if(a.error||e.error||r.error)throw (a.error||e.error||r.error);
-  state.athletes=a.data||[];state.events=e.data||[];state.registrations=r.data||[];render();
+  state.athletes=athletes;state.events=events;state.registrations=registrations;render();
 }
 async function boot(){
-  const {data:{session}}=await sb.auth.getSession();
+  const {data:{session},error:sessionError}=await sb.auth.getSession();
+  if(sessionError)throw sessionError;
   if(!session){$('loginView').classList.remove('hidden');$('appView').classList.add('hidden');return}
-  $('userPill').textContent=session.user.email||'Admin';$('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
-  const {data:t,error}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();if(error)throw error;state.tournament=t;
+  $('userPill').textContent=(session.user.email||'Admin')+' · CONNECTING';
+  $('loginView').classList.add('hidden');$('appView').classList.remove('hidden');
+  state.tournament={id:TOURNAMENT_ID,slug:TOURNAMENT_SLUG};
   $('level').innerHTML=['Y5','Y6','Y7','Y8','Intermediate','Senior'].map(x=>'<option>'+x+'</option>').join('');
   const qp=new URLSearchParams(location.search);if(qp.get('level'))$('level').value=qp.get('level');if(['M','F'].includes(qp.get('gender'))) $('gender').value=qp.get('gender');if(['Blue','Red','White','Green'].includes(qp.get('color'))) $('color').value=qp.get('color');
   await reloadData();
+  $('userPill').textContent=(session.user.email||'Admin')+' · LIVE DB';
   if(qp.get('print')==='1')setTimeout(()=>window.print(),400);
 }
 async function signIn(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){msg($('loginMsg'),error.message,'bad');return}boot()}
@@ -234,7 +249,7 @@ boot().catch(e=>alert(e.message||String(e)));
   });
   async function check(){
     try{
-      const reg=await navigator.serviceWorker.register('../service-worker.js?v=14',{updateViaCache:'none'});
+      const reg=await navigator.serviceWorker.register('../service-worker.js?v=24',{updateViaCache:'none'});
       await reg.update();
     }catch(e){console.error('PWA update check failed',e)}
   }
