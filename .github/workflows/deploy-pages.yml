@@ -29,6 +29,11 @@ jobs:
         with:
           enablement: true
 
+      - name: Generate version metadata
+        shell: bash
+        run: |
+          printf '{"version":"single-screen","build":"%s","run":%s,"date":"%s"}\n' "$GITHUB_SHA" "$GITHUB_RUN_NUMBER" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > version.json
+
       - name: Upload site
         uses: actions/upload-pages-artifact@v3
         with:
