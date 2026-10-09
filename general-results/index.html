@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#071d2d">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<link rel="manifest" href="../manifest.webmanifest?v=27">
+<link rel="icon" href="../icons/icon-192.png">
+<title>FieldFlow Athletics · General Results</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#061722;--card:#0b2638;--border:#285067;--muted:#9fb6c4;--blue:#0b5fff;--green:#18d39e}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#071d2d,#04121b);color:#eaf3f8;font:14px system-ui,-apple-system,Segoe UI,Arial,sans-serif;min-height:100vh}
+a{color:inherit;text-decoration:none}button,select{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+.shell{max-width:1350px;margin:auto;padding:16px}.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:11px}.brand img{width:46px;height:46px;border-radius:12px}h1{font-size:22px;margin:0}.sub{color:var(--muted);font-size:12px}
+.nav{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0 18px}.nav a{padding:9px 12px;border:1px solid var(--border);border-radius:9px;font-weight:750;font-size:12px}.nav .active{background:var(--blue);border-color:var(--blue)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:14px}
+.controls{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.controls label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase;font-weight:800}
+select,.btn{background:#092034;color:#fff;border:1px solid var(--border);border-radius:9px;padding:10px 12px;min-height:42px}
+.btn{font-weight:800}.btn.primary{background:var(--blue);border-color:var(--blue)}
+h2{font-size:17px;margin:0 0 12px}.hint{color:var(--muted);font-size:12px;line-height:1.5}.status{padding:9px 0;color:#acd2e5;font-size:12px}
+.tablewrap{overflow:auto;border-radius:12px;border:1px solid #25465a}table{border-collapse:collapse;width:100%;min-width:660px}th,td{text-align:right;padding:12px 10px;border-bottom:1px solid #204052;font-variant-numeric:tabular-nums}th{font-size:11px;text-transform:uppercase;color:#c3d7e3;background:#092c41}td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:#0b2638;z-index:1;font-weight:750}tr.total td{background:#0d3850;font-weight:900}tr.total td:first-child{background:#0d3850}
+th.colBlue{color:#78aaff}th.colRed{color:#ff8989}th.colWhite{color:#fff}th.colGreen{color:#79e3b8}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.scorecard{border:1px solid #2d5267;border-radius:12px;padding:15px;background:#092b3d}.scorecard .name{font-weight:800}.scorecard .pts{font-size:28px;font-weight:900;margin-top:9px}.scorecard small{color:#abc3cf}.scorecard.Blue{border-top:4px solid #3283ff}.scorecard.Red{border-top:4px solid #ff5252}.scorecard.White{border-top:4px solid #fff}.scorecard.Green{border-top:4px solid #21d98f}
+.message{background:#352612;border:1px solid #865c20;border-radius:10px;padding:12px;margin:10px 0;color:#ffddaa}
+@media(max-width:650px){.shell{padding:9px}.panel{padding:11px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.scorecard .pts{font-size:23px}.top{align-items:flex-start}h1{font-size:18px}}
+@media print{body{background:#fff;color:#111}.shell{max-width:none}.nav,.controls,.btn,.status{display:none!important}.panel{background:#fff;border:1px solid #bbb;break-inside:avoid}td,th{color:#111!important;background:#fff!important;border-bottom:1px solid #ccc}.scorecard{background:#fff;color:#111}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="top"><div class="brand"><img src="../icons/icon-192.png" alt="FieldFlow Athletics"><div><h1>General Results</h1><div class="sub">Intercolour Athletics · Official colour standings · Build 27</div></div></div><div><span id="userLabel" class="sub"></span> <button class="btn" id="logout">Logout</button></div></header>
+  <nav class="nav"><a href="../">Track</a><a href="../field/">Field</a><a class="active" href="./">General Results</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/">Print</a><a href="../cross-country/">Cross Country</a></nav>
+  <section id="auth" class="panel hidden"><h2>Admin access</h2><p class="hint">Sign in through Track to open General Results.</p><a class="btn primary" href="../?tab=results">Sign in</a></section>
+  <div id="dashboard" class="hidden">
+  <section class="panel"><div class="controls">
+    <div><label for="category">Category</label><select id="category"><option value="all">All Categories</option></select></div>
+    <div><label for="gender">Gender</label><select id="gender"><option value="all">All Genders</option><option value="M">Boys</option><option value="F">Girls</option></select></div>
+    <div><label for="discipline">Discipline</label><select id="discipline"><option value="all">All Disciplines</option><option value="track">Track</option><option value="field">Field</option><option value="relay">Relays</option></select></div>
+    <button id="refresh" class="btn primary">Refresh results</button><button id="print" class="btn">Print</button>
+  </div><div id="status" class="status">Loading official standings…</div><div class="hint">Only points recorded in the official points ledger are included. Incomplete or unscored events contribute no points.</div></section>
+  <section class="panel"><h2>General Overall · Colour Ranking</h2><div id="cards" class="cards"></div></section>
+  <section class="panel"><h2>Points by Category &amp; Gender</h2><div class="tablewrap"><table><thead><tr><th>Category / Gender</th><th class="colBlue">Blue</th><th class="colRed">Red</th><th class="colWhite">White</th><th class="colGreen">Green</th><th>Total</th></tr></thead><tbody id="byCategory"></tbody></table></div></section>
+  <section class="panel"><h2>Total by Gender</h2><div class="tablewrap"><table><thead><tr><th>Gender</th><th class="colBlue">Blue</th><th class="colRed">Red</th><th class="colWhite">White</th><th class="colGreen">Green</th><th>Total</th></tr></thead><tbody id="byGender"></tbody></table></div></section>
+  <section class="panel"><h2>Total by Category</h2><div class="tablewrap"><table><thead><tr><th>Category</th><th class="colBlue">Blue</th><th class="colRed">Red</th><th class="colWhite">White</th><th class="colGreen">Green</th><th>Total</th></tr></thead><tbody id="byLevel"></tbody></table></div></section>
+  </div>
+</main>
+<script>
+const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
+const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
+const TOURNAMENT_SLUG='intercolour-athletics-2026';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id), COLORS=['Blue','Red','White','Green'];
+const LEVELS=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
+let ledger=[];
+const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
+function zero(){return {Blue:0,Red:0,White:0,Green:0}}
+function sums(rows){let s=zero();for(const r of rows){if(COLORS.includes(r.color))s[r.color]+=Number(r.points)||0}return s}
+function cells(s){return COLORS.map(c=>'<td>'+fmt(s[c])+'</td>').join('')+'<td><b>'+fmt(Object.values(s).reduce((a,b)=>a+b,0))+'</b></td>'}
+function tr(name,rows,cls=''){return '<tr class="'+cls+'"><td>'+name+'</td>'+cells(sums(rows))+'</tr>'}
+function filtered(){let c=$('category').value,g=$('gender').value,d=$('discipline').value;return ledger.filter(r=>(c==='all'||r.category===c)&&(g==='all'||r.gender===g)&&(d==='all'||r.discipline===d))}
+function render(){
+ const rows=filtered(),score=sums(rows);
+ const ranking=COLORS.map(c=>({color:c,points:score[c]})).sort((a,b)=>b.points-a.points||COLORS.indexOf(a.color)-COLORS.indexOf(b.color));
+ $('cards').innerHTML=ranking.map((r,i)=>'<article class="scorecard '+r.color+'"><div class="name">'+(i+1)+'. '+r.color+'</div><div class="pts">'+fmt(r.points)+'</div><small>official points</small></article>').join('');
+ const cats=LEVELS.filter(c=>rows.some(r=>r.category===c));for(const c of [...new Set(rows.map(r=>r.category))])if(!cats.includes(c))cats.push(c);
+ const genderCodes=['M','F'];
+ let html='';
+ for(const cat of cats)for(const g of genderCodes){const subset=rows.filter(r=>r.category===cat&&r.gender===g);if(subset.length)html+=tr(cat+' · '+(g==='M'?'Boys':'Girls'),subset)}
+ $('byCategory').innerHTML=html||'<tr><td colspan="6">No official points yet</td></tr>';
+ $('byGender').innerHTML=genderCodes.filter(g=>$('gender').value==='all'||$('gender').value===g).map(g=>tr(g==='M'?'Boys':'Girls',rows.filter(r=>r.gender===g))).join('')+tr('TOTAL',rows,'total');
+ $('byLevel').innerHTML=cats.map(c=>tr(c,rows.filter(r=>r.category===c))).join('')+tr('TOTAL',rows,'total');
+ $('status').textContent=rows.length+' scored results · '+new Set(rows.map(r=>r.event_id)).size+' events · Updated '+new Date().toLocaleString('en-GB');
+}
+async function load(){
+ $('status').textContent='Loading official results…';
+ const {data:t,error:te}=await sb.from('tournaments').select('id').eq('slug',TOURNAMENT_SLUG).single();
+ if(te){$('status').textContent='Tournament not accessible: '+te.message;return}
+ // Paginate to avoid silent row limits when the competition grows.
+ let rows=[],offset=0,err=null;
+ do{const r=await sb.from('athletics_points_ledger').select('event_id,category,gender,discipline,color,points').eq('tournament_id',t.id).range(offset,offset+999);if(r.error){err=r.error;break}rows.push(...(r.data||[]));if(!r.data||r.data.length<1000)break;offset+=1000;}while(offset<100000);
+ if(err){$('status').textContent='Unable to load results: '+err.message;return}
+ ledger=rows;
+ const old=$('category').value;
+ const cats=LEVELS.filter(c=>rows.some(r=>r.category===c));for(const c of new Set(rows.map(r=>r.category)))if(!cats.includes(c))cats.push(c);
+ $('category').innerHTML='<option value="all">All Categories</option>'+cats.map(c=>'<option value="'+c.replace(/"/g,'&quot;')+'">'+c+'</option>').join('');
+ if(cats.includes(old))$('category').value=old;
+ render();
+}
+async function init(){
+ const {data:{session}}=await sb.auth.getSession();
+ if(!session){$('auth').classList.remove('hidden');return}
+ $('dashboard').classList.remove('hidden');$('userLabel').textContent=session.user.email||'Admin';
+ ['category','gender','discipline'].forEach(id=>$(id).addEventListener('change',render));
+ $('refresh').onclick=load;$('print').onclick=()=>window.print();
+ $('logout').onclick=async()=>{await sb.auth.signOut();location.href='../'};
+ await load();
+}
+init();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('../service-worker.js').catch(()=>{});
+</script>
+</body></html>
