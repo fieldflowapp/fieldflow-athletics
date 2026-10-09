@@ -406,6 +406,25 @@ function renderMeasuredSheet(){
     '<td class="best">'+(rank.best_mark??'—')+'</td><td>'+(rank.second_mark??'—')+'</td><td>'+(rank.third_mark??'—')+'</td><td class="place">'+(rank.best_mark!=null?rank.place:'—')+'</td><td><b>'+(rank.best_mark!=null?rank.points:'—')+'</b></td></tr>'
   }).join('')+'</tbody></table></div>';
   $('saveMeasured').onclick=saveMeasured;
+  // Mobile keyboards may interpret Enter as moving to the next input.
+  // Keep the current attempt and both scroll positions unchanged.
+  p.querySelectorAll('.mMark').forEach(input=>{
+    input.setAttribute('enterkeyhint','done');
+    input.addEventListener('keydown',event=>{
+      if(event.key!=='Enter')return;
+      event.preventDefault();
+      event.stopPropagation();
+      const tableScroll=input.closest('.tablewrap');
+      const left=tableScroll?.scrollLeft??0;
+      const top=tableScroll?.scrollTop??0;
+      const pageX=window.scrollX,pageY=window.scrollY;
+      // Do not focus a subsequent attempt or submit an implicit form.
+      requestAnimationFrame(()=>{
+        if(tableScroll){tableScroll.scrollLeft=left;tableScroll.scrollTop=top}
+        window.scrollTo(pageX,pageY);
+      });
+    });
+  });
 }
 async function saveMeasured(){
   const cells=[...document.querySelectorAll('.mStatus')];
