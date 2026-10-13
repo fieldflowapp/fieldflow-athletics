@@ -401,7 +401,8 @@ function renderMeasuredSheet(){
   '<th>Best</th><th>2nd</th><th>3rd</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
   rows.map(({r,a})=>{
     const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
-    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b></td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
+    const isEliminated=hjEliminationSequence(r.id)!==null;
+    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b>'+(isEliminated?'<div class="hj-elim">ELIMINATED</div>':'')+'</td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
     Array.from({length:limit},(_,i)=>{const at=attemptFor(r.id,i+1);return '<td class="attempt"><select class="mStatus" data-reg="'+r.id+'" data-no="'+(i+1)+'"><option value="pending" '+((at?.status||'pending')==='pending'?'selected':'')+'>—</option><option value="valid" '+(at?.status==='valid'?'selected':'')+'>Valid</option><option value="foul" '+(at?.status==='foul'?'selected':'')+'>Foul</option><option value="pass" '+(at?.status==='pass'?'selected':'')+'>Pass</option><option value="dns" '+(at?.status==='dns'?'selected':'')+'>DNS</option></select><input class="mMark" data-reg="'+r.id+'" data-no="'+(i+1)+'" type="number" step="0.01" min="0" placeholder="m" value="'+(at?.mark_m??'')+'"></td>'}).join('')+
     '<td class="best">'+(rank.best_mark??'—')+'</td><td>'+(rank.second_mark??'—')+'</td><td>'+(rank.third_mark??'—')+'</td><td class="place">'+(rank.best_mark!=null?rank.place:'—')+'</td><td><b>'+(rank.best_mark!=null?rank.points:'—')+'</b></td></tr>'
   }).join('')+'</tbody></table></div>';
@@ -451,8 +452,6 @@ function hjAttemptButtons(reg,height,no,res){
 function hjEliminationSequence(regId){
   for(const h of state.heights){
     const results=[1,2,3].map(no=>hjAttempt(regId,h.id,no)?.result||'');
-    const hasClear=results.includes('clear');
-    const misses=results.filter(x=>x==='miss').length;
     if(results.every(x=>x==='miss')) return h.sequence_no;
   }
   return null;
@@ -463,7 +462,7 @@ function renderHJSheet(){
   let setup=recordBanner(state.currentEvent)+'<div class="toolbar"><input id="heightInput" type="number" step="0.01" min="0.5" style="width:130px" placeholder="New height m"><button class="btn primary" id="addHeight">Add height</button><button class="btn good" id="saveHJ">Save high jump</button></div><div id="sheetMsg"></div>';
   if(!rows.length){p.innerHTML=setup+'<div class="empty">Register athletes first.</div>';wireHJ();return}
   if(!state.heights.length){p.innerHTML=setup+'<div class="empty">Add the first competition height.</div>';wireHJ();return}
-  p.innerHTML=setup+'<div class="message">O = clear · X = miss · – = pass. Each height shows 1st, 2nd and 3rd attempt. Three X at the same height eliminate the athlete and close all higher heights.</div>'+
+  p.innerHTML=setup+'<div class="message">O = clear · X = miss · – = pass (first attempt only). Elimination requires X on all three attempts at the same height.</div>'+
   '<div class="hj-desktop-wrap"><div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
   state.heights.map(h=>'<th class="hjcell">'+Number(h.height_m).toFixed(2)+' m</th>').join('')+
   '<th>Best</th><th>Miss @ best</th><th>Total misses</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
@@ -530,6 +529,7 @@ function wireHJ(){
     const eliminatedAt=hjEliminationSequence(reg);
     if(eliminatedAt!==null&&h?.sequence_no>eliminatedAt)return;
     if(result==='pass'&&no!==1)return;
+    if(no>1&&[1,2,3].slice(0,no-1).some(prev=>['clear','pass'].includes(hjAttempt(reg,height,prev)?.result)))return;
     state.hjDraft[k]=result;
     renderHJSheet();
   });
