@@ -444,12 +444,16 @@ function hjAttempt(regId,heightId,no){
   if(Object.prototype.hasOwnProperty.call(state.hjDraft,key)) return {result:state.hjDraft[key]};
   return state.hjAttempts.find(x=>x.registration_id===regId&&x.height_id===heightId&&x.attempt_no===no)
 }
+function hjAttemptButtons(reg,height,no,res){
+  const button=(value,label,active)=>'<button type="button" class="hjbtn '+(res===value?active:'')+'" data-reg="'+reg+'" data-height="'+height+'" data-no="'+no+'" data-result="'+value+'">'+label+'</button>';
+  return button('clear','O','active-clear')+button('miss','X','active-miss')+(no===1?button('pass','–','active-pass'):'');
+}
 function hjEliminationSequence(regId){
   for(const h of state.heights){
     const results=[1,2,3].map(no=>hjAttempt(regId,h.id,no)?.result||'');
     const hasClear=results.includes('clear');
     const misses=results.filter(x=>x==='miss').length;
-    if(!hasClear && misses===3) return h.sequence_no;
+    if(results.every(x=>x==='miss')) return h.sequence_no;
   }
   return null;
 }
@@ -474,7 +478,8 @@ function renderHJSheet(){
       return '<td class="hjcell">'+[1,2,3].map(no=>{
         const at=hjAttempt(r.id,h.id,no),res=at?.result||'';
         const label=no===1?'1st attempt':no===2?'2nd attempt':'3rd attempt';
-        return '<div style="display:grid;grid-template-columns:74px 1fr;gap:5px;align-items:center;margin-bottom:4px"><span class="muted" style="font-size:10px;text-align:right">'+label+'</span><div class="hjbuttons"><button type="button" class="hjbtn '+(res==='clear'?'active-clear':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="clear">O</button><button type="button" class="hjbtn '+(res==='miss'?'active-miss':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="miss">X</button><button type="button" class="hjbtn '+(res==='pass'?'active-pass':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="pass">–</button></div></div>'
+         const done=no>1&&[1,2,3].slice(0,no-1).some(prev=>['clear','pass'].includes(hjAttempt(r.id,h.id,prev)?.result));
+         return '<div style="display:grid;grid-template-columns:74px 1fr;gap:5px;align-items:center;margin-bottom:4px"><span class="muted" style="font-size:10px;text-align:right">'+label+'</span>'+(done?'<span class="hj-done">DONE</span>':'<div class="hjbuttons">'+hjAttemptButtons(r.id,h.id,no,res)+'</div>')+'</div>'
       }).join('')+'</td>'
     }).join('')+
     '<td class="best">'+(rank.best_height??'—')+'</td><td>'+(rank.best_height!=null?rank.misses_at_best:'—')+'</td><td>'+(rank.best_height!=null?rank.total_misses:'—')+'</td><td class="place">'+(rank.best_height!=null?rank.place:'—')+'</td><td><b>'+(rank.best_height!=null?rank.points:'—')+'</b></td></tr>'
@@ -496,17 +501,17 @@ function renderHJMobile(p,rows){
     const eliminatedAt=hjEliminationSequence(r.id);
     const closed=eliminatedAt!==null && h.sequence_no>eliminatedAt;
     const results=[1,2,3].map(no=>hjAttempt(r.id,h.id,no)?.result||'');
-    const currentElim=!results.includes('clear')&&results.filter(x=>x==='miss').length===3;
+    const currentElim=results.every(x=>x==='miss');
     const clearAt=results.findIndex(x=>x==='clear')+1;
     const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
     let body='';
     if(closed) body='<div class="hj-closed">CLOSED · athlete eliminated at a previous height</div>';
     else body='<div class="hj-attempt-grid">'+[1,2,3].map(no=>{
       const res=results[no-1];
-      const done=clearAt>0&&no>clearAt;
+      const done=(clearAt>0&&no>clearAt)||(no>1&&results[0]==='pass');
       const lab=no===1?'1st':no===2?'2nd':'3rd';
       if(done)return '<div class="hj-attempt-group"><div class="hj-attempt-label">'+lab+'</div><div class="hj-done">DONE</div></div>';
-      return '<div class="hj-attempt-group"><div class="hj-attempt-label">'+lab+'</div><div class="hjbuttons"><button type="button" class="hjbtn '+(res==='clear'?'active-clear':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="clear">O</button><button type="button" class="hjbtn '+(res==='miss'?'active-miss':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="miss">X</button><button type="button" class="hjbtn '+(res==='pass'?'active-pass':'')+'" data-reg="'+r.id+'" data-height="'+h.id+'" data-no="'+no+'" data-result="pass">–</button></div></div>';
+       return '<div class="hj-attempt-group"><div class="hj-attempt-label">'+lab+'</div><div class="hjbuttons">'+hjAttemptButtons(r.id,h.id,no,res)+'</div></div>';
     }).join('')+'</div>';
     return '<div class="hj-athlete-card"><div class="hj-athlete-head"><div><div class="hj-athlete-name">'+esc(a.last_name)+', '+esc(a.first_name)+'</div><div class="hj-athlete-meta">'+colorDot(a.color)+(rank.best_height!=null?' · Best '+rank.best_height+' m':'')+'</div></div>'+(currentElim?'<div class="hj-elim">ELIMINATED</div>':'')+'</div>'+body+'</div>';
   }).join('');
@@ -520,7 +525,12 @@ function wireHJ(){
   if($('hjNext'))$('hjNext').onclick=()=>{state.hjMobileHeightIndex=Math.min(state.heights.length-1,state.hjMobileHeightIndex+1);renderHJSheet()};
   document.querySelectorAll('.hjbtn').forEach(b=>b.onclick=()=>{
     const k=hjKey(b.dataset.reg,b.dataset.height,b.dataset.no);
-    state.hjDraft[k]=b.dataset.result;
+    const no=Number(b.dataset.no),result=b.dataset.result,reg=b.dataset.reg,height=b.dataset.height;
+    const h=state.heights.find(x=>String(x.id)===String(height));
+    const eliminatedAt=hjEliminationSequence(reg);
+    if(eliminatedAt!==null&&h?.sequence_no>eliminatedAt)return;
+    if(result==='pass'&&no!==1)return;
+    state.hjDraft[k]=result;
     renderHJSheet();
   });
 }
