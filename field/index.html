@@ -542,10 +542,38 @@ async function addHeight(){
   await reloadData();
 }
 async function saveHJ(){
+  // Re-evaluate each edited height before persisting. Pass is only legal on
+  // attempt 1; a clearance/pass makes all subsequent attempts at that height void.
+  const touched=new Map();
+  for(const key of Object.keys(state.hjDraft)){
+    const [reg,height,no]=key.split('|');
+    if(!touched.has(reg+'|'+height))touched.set(reg+'|'+height,{reg,height});
+    if(Number(no)>1&&state.hjDraft[key]==='pass'){
+      msg($('sheetMsg'),'Pass is only allowed on the first attempt.','bad');return;
+    }
+  }
+  for(const {reg,height} of touched.values()){
+    const results=[1,2,3].map(no=>hjAttempt(reg,height,no)?.result||'');
+    const finish=results[0]==='pass'?1:results.indexOf('clear')+1;
+    if(finish){
+      for(let no=finish+1;no<=3;no++)delete state.hjDraft[hjKey(reg,height,no)];
+    }
+  }
   for(const [key,result] of Object.entries(state.hjDraft)){
     const [reg,height,no]=key.split('|');
+    const results=[1,2,3].map(n=>hjAttempt(reg,height,n)?.result||'');
+    const finished=results[0]==='pass'?1:results.indexOf('clear')+1;
+    if(finished&&Number(no)>finished)continue;
     const payload={tournament_id:state.tournament.id,event_id:state.currentEvent.id,registration_id:reg,height_id:height,attempt_no:Number(no),result,updated_at:new Date().toISOString()};
     const {error}=await sb.from('athletics_high_jump_attempts').upsert(payload,{onConflict:'registration_id,height_id,attempt_no'});
+    if(error){msg($('sheetMsg'),error.message,'bad');return}
+  }
+  // Remove any superseded stored attempts, not just unsaved drafts.
+  for(const {reg,height} of touched.values()){
+    const results=[1,2,3].map(no=>hjAttempt(reg,height,no)?.result||'');
+    const finish=results[0]==='pass'?1:results.indexOf('clear')+1;
+    if(finish<1||finish>=3)continue;
+    const {error}=await sb.from('athletics_high_jump_attempts').delete().eq('registration_id',reg).eq('height_id',height).gt('attempt_no',finish);
     if(error){msg($('sheetMsg'),error.message,'bad');return}
   }
   await reloadData();msg($('sheetMsg'),'High jump sheet saved and countback recalculated.','good');
