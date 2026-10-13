@@ -133,7 +133,7 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const LEVELS=[];
 const COLORS=['Blue','Red','White','Green'];
-let state={tournament:null,races:[],athletes:[],attendance:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
+let state={tournament:null,races:[],athletes:[],attendance:[],attendanceGroups:[],results:[],pendingAttendance:new Map(),tab:'attendance'};
 
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function msg(el,text,type=''){el.innerHTML='<div class="message '+type+'">'+text+'</div>'}
@@ -209,16 +209,18 @@ async function fetchAllRows(table,columns,tid,orderColumn=null){
 }
 async function loadAll(){
   const tid=state.tournament.id;
-  const [rr,athletes,attendance,results]=await Promise.all([
+  const [rr,athletes,attendance,attendanceGroups,results]=await Promise.all([
     sb.from('athletics_cross_country_races').select('*').eq('tournament_id',tid).order('level').order('gender'),
     fetchAllRows('athletics_athletes','id,external_code,last_name,first_name,gender,level,color,active',tid,'last_name'),
     fetchAllRows('athletics_cross_country_attendance','*',tid),
+    fetchAllRows('athletics_cross_country_attendance_groups','*',tid),
     fetchAllRows('athletics_cross_country_results','*',tid)
   ]);
   if(rr.error)throw rr.error;
   state.races=rr.data||[];
   state.athletes=athletes;
   state.attendance=attendance;
+  state.attendanceGroups=attendanceGroups;
   state.results=results;
   fillFilters();
   state.pendingAttendance.clear();
@@ -245,31 +247,31 @@ function renderAttendance(){
 window.setAtt=(id,val)=>{state.pendingAttendance.set(id,val);renderAttendance()};
 
 async function clearAttendance(){
-  const list=currentAttList();
-  if(!list.length){msg($('attMsg'),'No students match these filters.','warnmsg');return}
-  const ids=list.map(x=>x.id);
-  const hasSaved=list.some(x=>state.attendance.some(a=>a.athlete_id===x.id));
-  const hasPending=list.some(x=>state.pendingAttendance.has(x.id));
-  if(!hasSaved&&!hasPending){msg($('attMsg'),'Status is already blank for these filters.','warnmsg');return}
-  const ok=confirm('Clear status for '+ids.length+' student'+(ids.length===1?'':'s')+' in the current filters?\n\nThis will remove P/A selections and leave Status blank. The master student database will not be changed.');
-  if(!ok)return;
-  $('clearAttendance').disabled=true;
-
-  ids.forEach(id=>state.pendingAttendance.delete(id));
-
-  if(hasSaved){
-    const {data,error}=await sb.rpc('cross_country_clear_attendance',{p_athlete_ids:ids});
-    if(error){
-      $('clearAttendance').disabled=false;
-      msg($('attMsg'),esc(error.message),'badmsg');
-      renderAttendance();
-      return;
-    }
+  const level=$('attLevel').value,gender=$('attGender').value,color=$('attColor').value;
+  if(gender==='All'||color==='All'){
+    msg($('attMsg'),'Choose one gender and one colour before clearing attendance.','warnmsg');return;
   }
-
-  $('clearAttendance').disabled=false;
-  await loadAll();
-  msg($('attMsg'),'Status cleared. P/A is blank for the current filters.','goodmsg');
+  const race=state.races.find(r=>r.level===level&&r.gender===gender);
+  if(!race){msg($('attMsg'),'Race not found.','badmsg');return}
+  const list=currentAttList(),ids=list.map(x=>x.id);
+  const hasPending=ids.some(id=>state.pendingAttendance.has(id));
+  const hasSaved=list.some(x=>state.attendance.some(a=>a.athlete_id===x.id));
+  const hasRecorded=!!state.attendanceGroups.some(g=>g.race_id===race.id&&g.color===color&&g.recorded);
+  if(!hasPending&&!hasSaved&&!hasRecorded){
+    msg($('attMsg'),'Attendance is already blank and pending for this group.','warnmsg');return;
+  }
+  const label=level+' · '+(gender==='F'?'Girls':'Boys')+' · '+color;
+  if(!confirm('Clear Attendance for '+label+'?\n\nThis removes all P/A selections for this group, resets its recorded flag and recalculates the race. Saved finish results are protected.'))return;
+  $('clearAttendance').disabled=true;
+  try{
+    const {error}=await sb.rpc('cross_country_clear_attendance_group',{p_race_id:race.id,p_color:color});
+    if(error)throw error;
+    ids.forEach(id=>state.pendingAttendance.delete(id));
+    await loadAll();
+    msg($('attMsg'),'Attendance cleared for '+esc(label)+'. Group is pending and ready to register again.','goodmsg');
+  }catch(error){
+    msg($('attMsg'),esc(error.message||'Failed to clear attendance.'),'badmsg');
+  }finally{$('clearAttendance').disabled=false;}
 }
 
 async function saveAttendance(){
