@@ -532,6 +532,7 @@ function wireHJ(){
     if(no>1&&[1,2,3].slice(0,no-1).some(prev=>['clear','pass'].includes(hjAttempt(reg,height,prev)?.result)))return;
     state.hjDraft[k]=result;
     renderHJSheet();
+    if($('sheetMsg'))msg($('sheetMsg'),'UNSAVED CHANGES — press Save high jump before leaving this event.','warn');
   });
 }
 async function addHeight(){
@@ -581,6 +582,11 @@ function renderRanking(){
   rank.map(x=>'<tr><td class="place">'+x.place+'</td><td><b>'+esc(x.last_name)+', '+esc(x.first_name)+'</b></td><td>'+colorDot(x.color)+'</td><td class="best">'+(isHJ()?x.best_height:x.best_mark)+'</td><td>'+(isHJ()?x.total_misses:(x.second_mark??'—'))+'</td><td><b>'+x.points+'</b></td></tr>').join('')+
   '</tbody></table></div>';
 }
+window.addEventListener('beforeunload',event=>{
+  if(!Object.keys(state.hjDraft).length)return;
+  event.preventDefault();
+  event.returnValue='';
+});
 sb.auth.onAuthStateChange((event)=>{if(event==='SIGNED_OUT')location.reload()});
 wire();boot();
 </script>
