@@ -13,6 +13,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background
 .bar select,.bar button{padding:10px 12px;border:1px solid #b9c3c9;border-radius:8px;background:white;font:inherit}
 .bar button{background:var(--navy);color:white;font-weight:700;cursor:pointer}
 .bar .spacer{flex:1}
+.field-table{table-layout:auto}.field-table th,.field-table td{padding:5px 4px}.field-table .attempt-col{min-width:42px}
 .sheet{width:210mm;min-height:297mm;margin:10px auto 30px;background:white;padding:12mm;box-shadow:0 8px 30px #0002}
 .head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:8px}
 h1{font-size:22px;margin:0}.meta{font-size:12px;color:var(--muted);margin-top:4px}.record{font-size:12px;text-align:right}
@@ -86,11 +87,14 @@ function perf(v,u,e){
   return u==='s'?fmtTime(v,e):Number(v).toFixed(2)+' '+(u||'');
 }
 function eventTitle(e){return e.category+' · '+gender(e.gender)+' · '+e.name;}
+function fieldMark(v){return v==null||v===''?'—':Number(v).toFixed(2)+' m';}
+function fieldStatus(x){if(!x)return '—';if(x.status==='valid')return fieldMark(x.mark_m);return ({foul:'X',pass:'–',pending:'—'})[x.status]||x.status||'—';}
+function hjResult(x){return ({clear:'O',miss:'X',pass:'–'})[x?.result]||'—';}
 async function init(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){$('login').classList.remove('hidden');return}
   $('main').classList.remove('hidden');
-  const {data:events,error}=await sb.from('athletics_events').select('*').eq('tournament_id',TOURNAMENT_ID).in('discipline',['track','relay']).order('category').order('gender').order('sort_order');
+  const {data:events,error}=await sb.from('athletics_events').select('*').eq('tournament_id',TOURNAMENT_ID).in('discipline',['track','relay','field']).order('category').order('gender').order('sort_order');
   if(error){$('sheet').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
   $('eventSelect').innerHTML=(events||[]).map(e=>'<option value="'+e.id+'">'+esc(eventTitle(e))+'</option>').join('');
   const q=new URLSearchParams(location.search).get('event');
@@ -110,6 +114,7 @@ async function loadEvent(eventId){
     sb.from('athletics_relay_teams').select('*').eq('event_id',eventId)
   ]);
   const err=eErr||hErr||rErr||enErr||lErr||rrErr||rtErr;if(err){$('sheet').innerHTML='<div class="empty">'+esc(err.message)+'</div>';return}
+  if(event.discipline==='field'){await renderFieldEvent(event,regs||[],ledger||[]);return;}
   const athleteIds=[...new Set((regs||[]).map(r=>r.athlete_id))];
   let athletes=[];
   if(athleteIds.length){
@@ -174,6 +179,63 @@ async function loadEvent(eventId){
   out+='<div class="footer"><span>FieldFlow Athletics</span><span>Printed '+esc(new Date().toLocaleString())+'</span></div>';
   $('sheet').innerHTML=out;
 }
+
+async function renderFieldEvent(event,regs,ledger){
+  const isHighJump=event.code==='HJ';
+  const requests=[
+    sb.from('athletics_athletes').select('*').eq('tournament_id',TOURNAMENT_ID).eq('level',event.category).eq('gender',event.gender),
+    isHighJump?sb.from('athletics_high_jump_heights').select('*').eq('event_id',event.id).order('sequence_no'):sb.from('athletics_field_attempts').select('*').eq('event_id',event.id).order('attempt_no'),
+    isHighJump?sb.from('athletics_high_jump_attempts').select('*').eq('event_id',event.id):sb.from('athletics_field_measured_ranking').select('*').eq('event_id',event.id).order('place'),
+    isHighJump?sb.from('athletics_high_jump_ranking').select('*').eq('event_id',event.id).order('place'):Promise.resolve({data:[]})
+  ];
+  const [ar,details,extra,ranking]=await Promise.all(requests);
+  const err=ar.error||details.error||extra.error||ranking.error;
+  if(err){$('sheet').innerHTML='<div class="empty">'+esc(err.message)+'</div>';return}
+  const athletes=new Map((ar.data||[]).map(a=>[a.id,a]));
+  const registered=regs.filter(r=>r.status==='registered');
+  const ordered=registered.map(r=>({r,a:athletes.get(r.athlete_id)||{}})).sort((x,y)=>String(x.a.last_name||'').localeCompare(String(y.a.last_name||'')));
+  const record=event.record_value?esc(event.record_value)+(event.record_year?' · '+esc(event.record_year):''):'—';
+  let out='<header class="head"><div><h1>FieldFlow Athletics</h1><div class="meta">'+esc(eventTitle(event))+' · Field</div></div><div class="record"><b>Record:</b> '+record+'</div></header>';
+  out+='<h2>Event summary</h2><table><tbody><tr><th>Category</th><td>'+esc(event.category)+'</td><th>Gender</th><td>'+esc(gender(event.gender))+'</td></tr><tr><th>Event</th><td>'+esc(event.name)+'</td><th>Registered</th><td>'+ordered.length+'</td></tr></tbody></table>';
+  if(isHighJump){
+    const heights=details.data||[], attempts=extra.data||[];
+    const byAttempt=new Map(attempts.map(a=>[a.registration_id+'|'+a.height_id+'|'+a.attempt_no,a]));
+    out+='<h2>High jump · Height progression</h2>';
+    if(!heights.length)out+='<div class="empty">No heights configured yet.</div>';
+    else{
+      out+='<table class="field-table"><thead><tr><th>Athlete</th><th>Colour</th>'+heights.map(h=>'<th class="center">'+esc(fieldMark(h.height_m))+'</th>').join('')+'</tr></thead><tbody>';
+      ordered.forEach(({r,a})=>{
+        out+='<tr><td>'+esc((a.last_name||'')+', '+(a.first_name||''))+'</td><td>'+esc(a.color||'')+'</td>';
+        heights.forEach(h=>{out+='<td class="center">'+[1,2,3].map(n=>hjResult(byAttempt.get(r.id+'|'+h.id+'|'+n))).filter((v,i,arr)=>v!=='—'||arr.slice(i+1).some(z=>z!=='—')).join(' ')+'</td>'});
+        out+='</tr>';
+      });
+      out+='</tbody></table>';
+    }
+  }else{
+    const attempts=details.data||[], limit=event.attempt_limit||3;
+    const byAttempt=new Map(attempts.map(a=>[a.registration_id+'|'+a.attempt_no,a]));
+    out+='<h2>Field attempts</h2><table class="field-table"><thead><tr><th>Athlete</th><th>Colour</th>'+Array.from({length:limit},(_,i)=>'<th class="center attempt-col">Attempt '+(i+1)+'</th>').join('')+'</tr></thead><tbody>';
+    ordered.forEach(({r,a})=>{
+      out+='<tr><td>'+esc((a.last_name||'')+', '+(a.first_name||''))+'</td><td>'+esc(a.color||'')+'</td>';
+      for(let n=1;n<=limit;n++)out+='<td class="center">'+esc(fieldStatus(byAttempt.get(r.id+'|'+n)))+'</td>';
+      out+='</tr>';
+    });
+    out+='</tbody></table>';
+  }
+  out+='<h2>Official places & points</h2>';
+  const rank=isHighJump?(ranking.data||[]):(extra.data||[]);
+  if(!rank.length)out+='<div class="empty">No official field ranking available yet.</div>';
+  else{
+    out+='<table><thead><tr><th>Place</th><th>Athlete</th><th>Colour</th><th class="right">Best '+(isHighJump?'height':'mark')+'</th><th class="center">'+(isHighJump?'Total misses':'Second mark')+'</th><th class="center">Points</th></tr></thead><tbody>';
+    rank.forEach(x=>{
+      out+='<tr><td class="center strong">'+esc(x.place??'—')+'</td><td>'+esc((x.last_name||'')+', '+(x.first_name||''))+'</td><td>'+esc(x.color||'')+'</td><td class="right">'+esc(fieldMark(isHighJump?x.best_height:x.best_mark))+'</td><td class="center">'+esc(isHighJump?(x.total_misses??'—'):fieldMark(x.second_mark))+'</td><td class="center strong">'+esc(x.points??'—')+'</td></tr>';
+    });
+    out+='</tbody></table>';
+  }
+  out+='<div class="footer"><span>FieldFlow Athletics · Field</span><span>Printed '+esc(new Date().toLocaleString())+'</span></div>';
+  $('sheet').innerHTML=out;
+}
+
 $('signIn').onclick=async()=>{
   $('loginMsg').textContent='Signing in…';
   const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
