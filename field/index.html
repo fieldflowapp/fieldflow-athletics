@@ -401,12 +401,20 @@ function renderMeasuredSheet(){
   '<th>Best</th><th>2nd</th><th>3rd</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
   rows.map(({r,a})=>{
     const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
-    const isEliminated=hjEliminationSequence(r.id)!==null;
-    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b>'+(isEliminated?'<div class="hj-elim">ELIMINATED</div>':'')+'</td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
+    return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b></td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
     Array.from({length:limit},(_,i)=>{const at=attemptFor(r.id,i+1);return '<td class="attempt"><select class="mStatus" data-reg="'+r.id+'" data-no="'+(i+1)+'"><option value="pending" '+((at?.status||'pending')==='pending'?'selected':'')+'>—</option><option value="valid" '+(at?.status==='valid'?'selected':'')+'>Valid</option><option value="foul" '+(at?.status==='foul'?'selected':'')+'>Foul</option><option value="pass" '+(at?.status==='pass'?'selected':'')+'>Pass</option><option value="dns" '+(at?.status==='dns'?'selected':'')+'>DNS</option></select><input class="mMark" data-reg="'+r.id+'" data-no="'+(i+1)+'" type="number" step="0.01" min="0" placeholder="m" value="'+(at?.mark_m??'')+'"></td>'}).join('')+
     '<td class="best">'+(rank.best_mark??'—')+'</td><td>'+(rank.second_mark??'—')+'</td><td>'+(rank.third_mark??'—')+'</td><td class="place">'+(rank.best_mark!=null?rank.place:'—')+'</td><td><b>'+(rank.best_mark!=null?rank.points:'—')+'</b></td></tr>'
   }).join('')+'</tbody></table></div>';
   $('saveMeasured').onclick=saveMeasured;
+  // A typed distance is a valid attempt unless the operator chooses foul/pass/DNS.
+  p.querySelectorAll('.mMark').forEach(input=>input.addEventListener('input',()=>{
+    const select=p.querySelector('.mStatus[data-reg="'+input.dataset.reg+'"][data-no="'+input.dataset.no+'"]');
+    if(input.value.trim()!==''&&select?.value==='pending')select.value='valid';
+    msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
+  }));
+  p.querySelectorAll('.mStatus').forEach(select=>select.addEventListener('change',()=>{
+    msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
+  }));
   // Mobile keyboards may interpret Enter as moving to the next input.
   // Keep the current attempt and both scroll positions unchanged.
   p.querySelectorAll('.mMark').forEach(input=>{
@@ -428,16 +436,45 @@ function renderMeasuredSheet(){
   });
 }
 async function saveMeasured(){
-  const cells=[...document.querySelectorAll('.mStatus')];
-  for(const s of cells){
-    const reg=s.dataset.reg,no=Number(s.dataset.no),status=s.value,markEl=document.querySelector('.mMark[data-reg="'+reg+'"][data-no="'+no+'"]'),raw=markEl.value;
-    const mark=status==='valid'?(raw===''?null:Number(raw)):null;
-    if(status==='valid'&&mark===null){msg($('sheetMsg'),'A valid attempt needs a mark.','bad');return}
-    const payload={tournament_id:state.tournament.id,event_id:state.currentEvent.id,registration_id:reg,attempt_no:no,status,mark_m:mark,updated_at:new Date().toISOString()};
-    const {error}=await sb.from('athletics_field_attempts').upsert(payload,{onConflict:'event_id,registration_id,attempt_no'});
-    if(error){msg($('sheetMsg'),error.message,'bad');return}
+  const button=$('saveMeasured'),eventId=state.currentEvent.id;
+  if(button){button.disabled=true;button.textContent='Saving…'}
+  try{
+    const edits=[];
+    for(const s of document.querySelectorAll('.mStatus')){
+      const reg=s.dataset.reg,no=Number(s.dataset.no);
+      const markEl=document.querySelector('.mMark[data-reg="'+reg+'"][data-no="'+no+'"]');
+      const raw=markEl.value.trim();
+      const stored=attemptFor(reg,no);
+      let status=s.value;
+      // Never discard a numerical mark just because status remained "pending".
+      if(raw!==''&&status==='pending')status='valid';
+      if(status==='valid'&&(raw===''||!Number.isFinite(Number(raw))||Number(raw)<0)){
+        throw Error('A valid attempt needs a non-negative distance (athlete '+reg+', attempt '+no+').');
+      }
+      const mark=status==='valid'?Number(raw):null;
+      // Do not upsert empty untouched attempts.
+      if(status==='pending'&&raw==='')continue;
+      if(stored?.status===status&&(stored.mark_m==null?mark==null:Number(stored.mark_m)===mark))continue;
+      edits.push({tournament_id:state.tournament.id,event_id:eventId,registration_id:reg,attempt_no:no,status,mark_m:mark,updated_at:new Date().toISOString()});
+    }
+    if(!edits.length){msg($('sheetMsg'),'No new results to save.','good');return}
+    for(const payload of edits){
+      const {data,error}=await sb.from('athletics_field_attempts').upsert(payload,{onConflict:'event_id,registration_id,attempt_no'}).select('registration_id,attempt_no,status,mark_m');
+      if(error)throw error;
+      if(!data?.some(x=>String(x.registration_id)===String(payload.registration_id)&&Number(x.attempt_no)===payload.attempt_no&&x.status===payload.status&&(payload.mark_m===null?x.mark_m===null:Number(x.mark_m)===payload.mark_m)))throw Error('Database did not confirm attempt '+payload.attempt_no+'.');
+    }
+    const {data:verified,error:verifyError}=await sb.from('athletics_field_attempts').select('registration_id,attempt_no,status,mark_m').eq('event_id',eventId);
+    if(verifyError)throw verifyError;
+    for(const payload of edits){
+      if(!verified?.some(x=>String(x.registration_id)===String(payload.registration_id)&&Number(x.attempt_no)===payload.attempt_no&&x.status===payload.status&&(payload.mark_m===null?x.mark_m===null:Number(x.mark_m)===payload.mark_m)))throw Error('Saved marks could not be verified.');
+    }
+    await reloadData();
+    msg($('sheetMsg'),edits.length+' results saved and verified.','good');
+  }catch(error){
+    msg($('sheetMsg'),'SAVE FAILED — your entries remain on screen. Do not close this page. '+(error.message||String(error)),'bad');
+  }finally{
+    const current=$('saveMeasured');if(current){current.disabled=false;current.textContent='Save all attempts'}
   }
-  await reloadData();msg($('sheetMsg'),'Attempts saved and ranking recalculated.','good');
 }
 function hjKey(regId,heightId,no){return regId+'|'+heightId+'|'+no}
 function hjAttempt(regId,heightId,no){
