@@ -416,33 +416,30 @@ function renderMeasuredSheet(){
   p.querySelectorAll('.mStatus').forEach(select=>select.addEventListener('change',()=>{
     msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
   }));
-  // Mobile IMEs sometimes treat Enter/Done as Next and scroll to a later
-  // attempt, even when keydown was prevented. Finish editing deliberately
-  // without moving focus to another field and restore both scroll axes.
+  // On mobile, type=number may make the IME use native "Next" navigation.
+  // A decimal text keyboard with "Done" avoids jumping to Attempt 3.
   p.querySelectorAll('.mMark').forEach(input=>{
+    if(window.matchMedia('(max-width:760px)').matches){
+      input.type='text';
+      input.setAttribute('inputmode','decimal');
+    }
     input.setAttribute('enterkeyhint','done');
-    const finishEditing=event=>{
+    const finish=event=>{
       if(event.key!=='Enter'&&event.key!=='NumpadEnter')return;
       event.preventDefault();
       event.stopPropagation();
-      event.stopImmediatePropagation();
-      if(event.type==='keyup')return;
-      const table=input.closest('.tablewrap');
-      const tableLeft=table?.scrollLeft??0,tableTop=table?.scrollTop??0;
-      const pageX=window.scrollX,pageY=window.scrollY;
-      // Blur the current field to dismiss the soft keyboard. Never focus Next.
+      const scroller=input.closest('.tablewrap');
+      const left=scroller?.scrollLeft??0,top=scroller?.scrollTop??0;
+      const x=window.scrollX,y=window.scrollY;
       input.blur();
       const restore=()=>{
-        if(table){table.scrollLeft=tableLeft;table.scrollTop=tableTop}
-        window.scrollTo(pageX,pageY);
+        if(scroller){scroller.scrollLeft=left;scroller.scrollTop=top}
+        window.scrollTo(x,y);
       };
       restore();
       requestAnimationFrame(restore);
-      setTimeout(restore,80);
-      setTimeout(restore,250);
     };
-    input.addEventListener('keydown',finishEditing);
-    input.addEventListener('keyup',finishEditing);
+    input.addEventListener('keydown',finish);
   });
 }
 async function saveMeasured(){
