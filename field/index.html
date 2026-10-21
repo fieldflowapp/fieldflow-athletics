@@ -415,24 +415,33 @@ function renderMeasuredSheet(){
   p.querySelectorAll('.mStatus').forEach(select=>select.addEventListener('change',()=>{
     msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
   }));
-  // Mobile keyboards may interpret Enter as moving to the next input.
-  // Keep the current attempt and both scroll positions unchanged.
+  // Mobile IMEs sometimes treat Enter/Done as Next and scroll to a later
+  // attempt, even when keydown was prevented. Finish editing deliberately
+  // without moving focus to another field and restore both scroll axes.
   p.querySelectorAll('.mMark').forEach(input=>{
     input.setAttribute('enterkeyhint','done');
-    input.addEventListener('keydown',event=>{
-      if(event.key!=='Enter')return;
+    const finishEditing=event=>{
+      if(event.key!=='Enter'&&event.key!=='NumpadEnter')return;
       event.preventDefault();
       event.stopPropagation();
-      const tableScroll=input.closest('.tablewrap');
-      const left=tableScroll?.scrollLeft??0;
-      const top=tableScroll?.scrollTop??0;
+      event.stopImmediatePropagation();
+      if(event.type==='keyup')return;
+      const table=input.closest('.tablewrap');
+      const tableLeft=table?.scrollLeft??0,tableTop=table?.scrollTop??0;
       const pageX=window.scrollX,pageY=window.scrollY;
-      // Do not focus a subsequent attempt or submit an implicit form.
-      requestAnimationFrame(()=>{
-        if(tableScroll){tableScroll.scrollLeft=left;tableScroll.scrollTop=top}
+      // Blur the current field to dismiss the soft keyboard. Never focus Next.
+      input.blur();
+      const restore=()=>{
+        if(table){table.scrollLeft=tableLeft;table.scrollTop=tableTop}
         window.scrollTo(pageX,pageY);
-      });
-    });
+      };
+      restore();
+      requestAnimationFrame(restore);
+      setTimeout(restore,80);
+      setTimeout(restore,250);
+    };
+    input.addEventListener('keydown',finishEditing);
+    input.addEventListener('keyup',finishEditing);
   });
 }
 async function saveMeasured(){
