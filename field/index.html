@@ -114,6 +114,20 @@
 #iosInstallDone{background:#0b5fff;color:#fff;border-color:#0b5fff!important}
 #iosInstallLater{background:#0d2a3a;color:#fff}
 </style>
+<style>
+@media(max-width:760px){
+  .measured-wrap{overflow-x:hidden;overflow-y:visible}
+  .measured-wrap table,.measured-wrap tbody{display:block;width:100%;min-width:0}
+  .measured-wrap thead{display:none}
+  .measured-wrap tr{display:block;width:100%;margin:0 0 12px;border:1px solid #285067;border-radius:12px;background:#082434;overflow:hidden}
+  .measured-wrap td{display:block;position:static!important;left:auto!important;width:100%;min-width:0!important;padding:8px 10px;border-bottom:1px solid #17384b}
+  .measured-wrap td.athlete,.measured-wrap td.colour{background:#0b293b}
+  .measured-wrap td.attempt{display:grid;grid-template-columns:76px minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;text-align:left}
+  .measured-wrap td.attempt::before{content:attr(data-attempt);font-size:11px;font-weight:800;color:#9eb6c3}
+  .measured-wrap td.attempt select,.measured-wrap td.attempt input{min-width:0;width:100%;font-size:16px;min-height:42px}
+  .measured-wrap td.best,.measured-wrap td.place{font-size:12px}
+}
+</style>
 </head>
 <body>
 
@@ -396,13 +410,13 @@ function renderMeasuredSheet(){
   const p=$('sheetPane'),rows=registeredRows(),limit=state.currentEvent.attempt_limit||3;
   if(!rows.length){p.innerHTML='<div class="empty">Register athletes first.</div>';return}
   p.innerHTML=recordBanner(state.currentEvent)+'<div class="message">Use a numeric mark in metres for a valid attempt. Use Foul or Pass when appropriate.</div><div class="toolbar"><button class="btn good" id="saveMeasured">Save all attempts</button></div><div id="sheetMsg"></div>'+
-  '<div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
+  '<div class="tablewrap measured-wrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
   Array.from({length:limit},(_,i)=>'<th>Attempt '+(i+1)+'</th>').join('')+
   '<th>Best</th><th>2nd</th><th>3rd</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
   rows.map(({r,a})=>{
     const rank=state.ranking.find(x=>x.registration_id===r.id)||{};
     return '<tr><td class="sticky1 athlete"><b>'+esc(a.last_name)+', '+esc(a.first_name)+'</b></td><td class="sticky2 colour">'+colorDot(a.color)+'</td>'+
-    Array.from({length:limit},(_,i)=>{const at=attemptFor(r.id,i+1);return '<td class="attempt"><select class="mStatus" data-reg="'+r.id+'" data-no="'+(i+1)+'"><option value="pending" '+((at?.status||'pending')==='pending'?'selected':'')+'>—</option><option value="valid" '+(at?.status==='valid'?'selected':'')+'>Valid</option><option value="foul" '+(at?.status==='foul'?'selected':'')+'>Foul</option><option value="pass" '+(at?.status==='pass'?'selected':'')+'>Pass</option><option value="dns" '+(at?.status==='dns'?'selected':'')+'>DNS</option></select><input class="mMark" data-reg="'+r.id+'" data-no="'+(i+1)+'" type="number" step="0.01" min="0" placeholder="m" value="'+(at?.mark_m??'')+'"></td>'}).join('')+
+    Array.from({length:limit},(_,i)=>{const at=attemptFor(r.id,i+1);return '<td class="attempt" data-attempt="Attempt '+(i+1)+'"><select class="mStatus" data-reg="'+r.id+'" data-no="'+(i+1)+'"><option value="pending" '+((at?.status||'pending')==='pending'?'selected':'')+'>—</option><option value="valid" '+(at?.status==='valid'?'selected':'')+'>Valid</option><option value="foul" '+(at?.status==='foul'?'selected':'')+'>Foul</option><option value="pass" '+(at?.status==='pass'?'selected':'')+'>Pass</option><option value="dns" '+(at?.status==='dns'?'selected':'')+'>DNS</option></select><input class="mMark" data-reg="'+r.id+'" data-no="'+(i+1)+'" type="number" step="0.01" min="0" placeholder="m" value="'+(at?.mark_m??'')+'"></td>'}).join('')+
     '<td class="best">'+(rank.best_mark??'—')+'</td><td>'+(rank.second_mark??'—')+'</td><td>'+(rank.third_mark??'—')+'</td><td class="place">'+(rank.best_mark!=null?rank.place:'—')+'</td><td><b>'+(rank.best_mark!=null?rank.points:'—')+'</b></td></tr>'
   }).join('')+'</tbody></table></div>';
   $('saveMeasured').onclick=saveMeasured;
