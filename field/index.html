@@ -491,12 +491,20 @@ function hjAttempt(regId,heightId,no){
 }
 function hjAttemptButtons(reg,height,no,res){
   const button=(value,label,active)=>'<button type="button" class="hjbtn '+(res===value?active:'')+'" data-reg="'+reg+'" data-height="'+height+'" data-no="'+no+'" data-result="'+value+'">'+label+'</button>';
-  return button('clear','O','active-clear')+button('miss','X','active-miss')+(no===1?button('pass','–','active-pass'):'');
+  return button('clear','O','active-clear')+button('miss','X','active-miss')+button('pass','–','active-pass');
 }
 function hjEliminationSequence(regId){
-  for(const h of state.heights){
-    const results=[1,2,3].map(no=>hjAttempt(regId,h.id,no)?.result||'');
-    if(results.every(x=>x==='miss')) return h.sequence_no;
+  let consecutiveMisses=0;
+  for(const h of [...state.heights].sort((a,b)=>a.sequence_no-b.sequence_no)){
+    for(const no of [1,2,3]){
+      const result=hjAttempt(regId,h.id,no)?.result||'';
+      if(result==='clear'){consecutiveMisses=0;break;}
+      if(result==='pass')break;
+      if(result==='miss'){
+        consecutiveMisses++;
+        if(consecutiveMisses>=3)return h.sequence_no;
+      }else break;
+    }
   }
   return null;
 }
@@ -506,7 +514,7 @@ function renderHJSheet(){
   let setup=recordBanner(state.currentEvent)+'<div class="toolbar"><input id="heightInput" type="number" step="0.01" min="0.5" style="width:130px" placeholder="New height m"><button class="btn primary" id="addHeight">Add height</button><button class="btn good" id="saveHJ">Save high jump</button></div><div id="sheetMsg"></div>';
   if(!rows.length){p.innerHTML=setup+'<div class="empty">Register athletes first.</div>';wireHJ();return}
   if(!state.heights.length){p.innerHTML=setup+'<div class="empty">Add the first competition height.</div>';wireHJ();return}
-  p.innerHTML=setup+'<div class="message">O = clear · X = miss · – = pass (first attempt only). Elimination requires X on all three attempts at the same height.</div>'+
+  p.innerHTML=setup+'<div class="message">O = clear · X = miss · – = pass (first attempt only). Elimination requires three consecutive X, including across heights. Passing does not reset X.</div>'+
   '<div class="hj-desktop-wrap"><div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
   state.heights.map(h=>'<th class="hjcell">'+Number(h.height_m).toFixed(2)+' m</th>').join('')+
   '<th>Best</th><th>Miss @ best</th><th>Total misses</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
@@ -572,7 +580,6 @@ function wireHJ(){
     const h=state.heights.find(x=>String(x.id)===String(height));
     const eliminatedAt=hjEliminationSequence(reg);
     if(eliminatedAt!==null&&h?.sequence_no>eliminatedAt)return;
-    if(result==='pass'&&no!==1)return;
     if(no>1&&[1,2,3].slice(0,no-1).some(prev=>['clear','pass'].includes(hjAttempt(reg,height,prev)?.result)))return;
     state.hjDraft[k]=result;
     renderHJSheet();
