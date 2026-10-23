@@ -166,7 +166,7 @@
     <aside class="panel pad">
       <h2>Event selector</h2>
       <div class="field"><label>Category</label><select id="category"></select></div>
-      <div class="field"><label>Gender</label><select id="gender"><option value="All">All Genders</option><option value="F">Girls</option><option value="M">Boys</option></select></div>
+      <div class="field"><label>Gender</label><select id="gender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
       <div class="field"><label>Colour</label><select id="colour"><option value="All">All Colors</option><option value="Blue">Blue</option><option value="Red">Red</option><option value="White">White</option><option value="Green">Green</option></select></div>
       <div class="field"><label>Field event</label><select id="event"></select></div>
       <div id="eventInfo" class="message"></div>
@@ -313,8 +313,8 @@ async function boot(){
 }
 async function refreshEventList(){
   const g=$('gender').value;
-  const list=state.events.filter(e=>e.category===$('category').value&&(g==='All'||e.gender===g));
-  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(e.name)+(g==='All'?' · '+genderName(e.gender):'')+'</option>').join('');
+  const list=state.events.filter(e=>e.category===$('category').value&&(e.gender===g));
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(e.name)+'</option>').join('');
   await loadEvent();
 }
 async function loadEvent(){
