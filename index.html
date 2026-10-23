@@ -163,7 +163,7 @@
     <aside class="panel pad">
       <h2>Event selector</h2>
       <div class="field"><label>Category</label><select id="category"></select></div>
-      <div class="field"><label>Gender</label><select id="gender"><option value="All">All Genders</option><option value="F">Girls</option><option value="M">Boys</option></select></div>
+      <div class="field"><label>Gender</label><select id="gender"><option value="F">Girls</option><option value="M">Boys</option></select></div>
       <div class="field"><label>Colour</label><select id="colour"><option value="All">All Colors</option><option value="Blue">Blue</option><option value="Red">Red</option><option value="White">White</option><option value="Green">Green</option></select></div>
       <div class="field"><label>Event</label><select id="event"></select></div>
       <div id="eventInfo" class="message"></div>
@@ -352,12 +352,12 @@ async function boot(){
     $('gender').value=targetEvent.gender;
   }else{
     if(requestedCategory&&cats.includes(requestedCategory))$('category').value=requestedCategory;
-    if(requestedGender==='M'||requestedGender==='F'||requestedGender==='All')$('gender').value=requestedGender;
+    if(requestedGender==='M'||requestedGender==='F')$('gender').value=requestedGender;
   }
 
   const cat=$('category').value,g=$('gender').value;
-  const list=state.events.filter(e=>e.category===cat&&(g==='All'||e.gender===g));
-  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+(g==='All'?' · '+genderName(e.gender):'')+'</option>').join('');
+  const list=state.events.filter(e=>e.category===cat&&(e.gender===g));
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+'</option>').join('');
   if(targetEvent&&list.some(e=>String(e.id)===String(targetEvent.id)))$('event').value=targetEvent.id;
   await loadEvent();
 
@@ -389,8 +389,8 @@ function setTab(tab){
 }
 async function refreshEventList(){
   const cat=$('category').value,g=$('gender').value;
-  const list=state.events.filter(e=>e.category===cat&&(g==='All'||e.gender===g));
-  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+(g==='All'?' · '+genderName(e.gender):'')+'</option>').join('');
+  const list=state.events.filter(e=>e.category===cat&&(e.gender===g));
+  $('event').innerHTML=list.map(e=>'<option value="'+e.id+'">'+esc(eventLabel(e))+'</option>').join('');
   await loadEvent();
 }
 async function loadEvent(){
