@@ -141,6 +141,8 @@ function eventClass(e){return e.discipline==='relay'?'relay':(e.discipline==='fi
 function eventLabel(e){return e.name||e.code||'Event'}
 function currentEvents(){const l=$('level').value,g=$('gender').value;return state.events.filter(e=>e.category===l&&e.gender===g).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0))}
 function currentAthletes(){const l=$('level').value,g=$('gender').value,c=$('color').value,q=$('search').value.trim().toLowerCase();return state.athletes.filter(a=>a.active&&a.level===l&&a.gender===g&&a.color===c&&(!q||[a.external_code,a.last_name,a.first_name].some(v=>String(v||'').toLowerCase().includes(q)))).sort((a,b)=>(a.last_name||'').localeCompare(b.last_name||'','es'))}
+function competitionLimit(e){return e.discipline==='track'?4:e.discipline==='field'?3:null}
+function colorEntries(eventId,color){const athleteIds=new Set(state.athletes.filter(a=>a.color===color).map(a=>a.id));return state.registrations.filter(r=>r.event_id===eventId&&athleteIds.has(r.athlete_id)).length}
 function regMap(){return new Map(state.registrations.map(r=>[r.athlete_id+'|'+r.event_id,r]))}
 function render(){
   const ev=currentEvents(),ath=currentAthletes(),map=regMap();
@@ -150,7 +152,7 @@ function render(){
   const head=ev.map(e=>'<th class="event '+eventClass(e)+'"><span class="event-name">'+esc(eventLabel(e))+'</span><span class="count">('+state.registrations.filter(r=>r.event_id===e.id&&ath.some(a=>a.id===r.athlete_id)).length+')</span></th>').join('');
   const rows=ath.map((a,i)=>'<tr>'+
     '<td class="identity athlete-no">'+(i+1)+'</td><td class="identity athlete-id">'+esc(a.external_code)+'</td><td class="identity athlete-surname">'+esc(a.last_name)+'</td><td class="identity athlete-name">'+esc(a.first_name)+'</td>'+
-    ev.map(e=>{const key=a.id+'|'+e.id,checked=map.has(key),disabled=e.discipline==='relay'||state.busy.has(key);return '<td><input class="check" type="checkbox" data-athlete="'+a.id+'" data-event="'+e.id+'" '+(checked?'checked ':'')+(disabled?'disabled ':'')+'aria-label="'+esc(a.first_name+' '+a.last_name+' '+eventLabel(e))+'"></td>'}).join('')+
+    ev.map(e=>{const key=a.id+'|'+e.id,checked=map.has(key),disabled=e.discipline==='relay'||state.busy.has(key)||(!checked&&competitionLimit(e)!==null&&colorEntries(e.id,a.color)>=competitionLimit(e));return '<td><input class="check" type="checkbox" data-athlete="'+a.id+'" data-event="'+e.id+'" '+(checked?'checked ':'')+(disabled?'disabled ':'')+'aria-label="'+esc(a.first_name+' '+a.last_name+' '+eventLabel(e))+'"></td>'}).join('')+
     '</tr>').join('');
   const foot=ev.map(e=>'<td>'+state.registrations.filter(r=>r.event_id===e.id&&ath.some(a=>a.id===r.athlete_id)).length+'</td>').join('');
   $('matrixWrap').innerHTML='<table><thead><tr><th class="identity athlete-no">#</th><th class="identity athlete-id">ID</th><th class="identity athlete-surname">Surname</th><th class="identity athlete-name">Name</th>'+head+'</tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td class="identity athlete-no"></td><td class="identity athlete-id"></td><td class="identity athlete-surname"></td><td class="identity athlete-name">Total entries</td>'+foot+'</tr></tfoot></table>';
@@ -163,6 +165,9 @@ async function toggleRegistration(el){
   const existing=state.registrations.find(r=>r.athlete_id===athleteId&&r.event_id===eventId);
   try{
     if(el.checked&&!existing){
+      const event=state.events.find(e=>e.id===eventId),athlete=state.athletes.find(a=>a.id===athleteId);
+      const limit=event?competitionLimit(event):null;
+      if(limit!==null&&athlete&&colorEntries(eventId,athlete.color)>=limit)throw new Error('Maximum '+limit+' athletes per color for '+event.discipline+'.');
       const {data,error}=await sb.from('athletics_registrations').insert({tournament_id:state.tournament.id,event_id:eventId,athlete_id:athleteId,status:'registered'}).select().single();
       if(error)throw error;state.registrations.push(data);
     }else if(!el.checked&&existing){
