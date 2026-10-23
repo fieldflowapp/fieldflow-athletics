@@ -396,7 +396,7 @@ function renderSheet(){
 function renderMeasuredSheet(){
   const p=$('sheetPane'),rows=registeredRows(),limit=state.currentEvent.attempt_limit||3;
   if(!rows.length){p.innerHTML='<div class="empty">Register athletes first.</div>';return}
-  p.innerHTML=recordBanner(state.currentEvent)+'<div class="message">Use a numeric mark in metres for a valid attempt. Use Foul or Pass when appropriate.</div><div class="toolbar"><button class="btn good" id="saveMeasured">Save all attempts</button></div><div id="sheetMsg"></div>'+
+  p.innerHTML=recordBanner(state.currentEvent)+'<div class="message">Use a numeric mark in metres for a valid attempt. Use Foul or DNS when appropriate.</div><div class="toolbar"><button class="btn good" id="saveMeasured">Save all attempts</button></div><div id="sheetMsg"></div>'+
   '<div class="tablewrap"><table><thead><tr><th class="sticky1 athlete">Athlete</th><th class="sticky2 colour">Colour</th>'+
   Array.from({length:limit},(_,i)=>'<th>Attempt '+(i+1)+'</th>').join('')+
   '<th>Best</th><th>2nd</th><th>3rd</th><th>Place</th><th>Points</th></tr></thead><tbody>'+
@@ -413,9 +413,22 @@ function renderMeasuredSheet(){
     if(input.value.trim()!==''&&select?.value==='pending')select.value='valid';
     msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
   }));
-  p.querySelectorAll('.mStatus').forEach(select=>select.addEventListener('change',()=>{
-    msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
-  }));
+  p.querySelectorAll('.mStatus').forEach(select=>{
+    const input=p.querySelector('.mMark[data-reg="'+select.dataset.reg+'"][data-no="'+select.dataset.no+'"]');
+    const sync=()=>{
+      if(!input)return;
+      const blocked=select.value==='foul'||select.value==='dns';
+      if(blocked)input.value='';
+      input.disabled=blocked;
+      input.placeholder=blocked?'—':'m';
+    };
+    if(select.value==='pass')select.value='pending';
+    sync();
+    select.addEventListener('change',()=>{
+      sync();
+      msg($('sheetMsg'),'UNSAVED CHANGES — press Save all attempts.','warn');
+    });
+  });
   // On mobile, type=number may make the IME use native "Next" navigation.
   // A decimal text keyboard with "Done" avoids jumping to Attempt 3.
   p.querySelectorAll('.mMark').forEach(input=>{
@@ -454,6 +467,7 @@ async function saveMeasured(){
       const stored=attemptFor(reg,no);
       let status=s.value;
       // Never discard a numerical mark just because status remained "pending".
+      if((status==='foul'||status==='dns')&&raw!=='')throw Error('Distance is not allowed for FOUL or DNS.');
       if(raw!==''&&status==='pending')status='valid';
       if(status==='valid'&&(raw===''||!Number.isFinite(Number(raw))||Number(raw)<0)){
         throw Error('A valid attempt needs a non-negative distance (athlete '+reg+', attempt '+no+').');
