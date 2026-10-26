@@ -593,22 +593,44 @@ function renderRegistrations(){
   if(search)search.oninput=()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('#registrationsPane [data-student-search]').forEach(row=>row.classList.toggle('hidden',q&&!row.dataset.studentSearch.includes(q)))};
 }
 async function saveRegistrations(){
-  const e=state.currentEvent, selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id);
-  const existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
+  const e=state.currentEvent;
+  if(!e)return;
+  const selected=new Set([...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id));
   const colour=$('colour')?.value||'All';
-  const visibleIds=new Set((colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour)).filter(a=>a.gender===e.gender).map(a=>a.id));
-  const toAdd=selected.filter(id=>!existing.has(id));
-  const toDel=state.registrations.filter(r=>visibleIds.has(r.athlete_id)&&!selected.includes(r.athlete_id)).map(r=>r.id);
-  $('saveRegs').disabled=true;
-  for(const athlete_id of toAdd){
-    const {error}=await sb.from('athletics_registrations').insert({tournament_id:state.tournament.id,event_id:e.id,athlete_id,status:'registered'});
-    if(error){msg($('regMsg'),error.message,'bad');$('saveRegs').disabled=false;await reloadData();return}
-  }
-  if(toDel.length){
-    const {error}=await sb.from('athletics_registrations').delete().in('id',toDel);
-    if(error){msg($('regMsg'),error.message,'bad');$('saveRegs').disabled=false;await reloadData();return}
-  }
-  $('saveRegs').disabled=false;await reloadData();msg($('regMsg'),'Registrations saved.','good');
+  const visibleIds=new Set(state.athletes.filter(a=>a.gender===e.gender&&(colour==='All'||a.color===colour)).map(a=>a.id));
+  const existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
+  const toDel=state.registrations.filter(r=>visibleIds.has(r.athlete_id)&&!selected.has(r.athlete_id));
+  const toAdd=[...selected].filter(id=>visibleIds.has(id)&&!existing.has(id));
+  const button=$('saveRegs');
+  button.disabled=true;
+  try{
+    // Free the colour's capacity BEFORE inserting a replacement.
+    // A failed deletion must not be followed by an insertion.
+    if(toDel.length){
+      const {data,error}=await sb.from('athletics_registrations').delete().in('id',toDel.map(r=>r.id)).select('id');
+      if(error)throw error;
+      if(data?.length!==toDel.length)throw Error('Could not confirm every removed registration.');
+    }
+    if(toAdd.length){
+      const {data,error}=await sb.from('athletics_registrations')
+        .insert(toAdd.map(athlete_id=>({tournament_id:state.tournament.id,event_id:e.id,athlete_id,status:'registered'})))
+        .select('athlete_id');
+      if(error)throw error;
+      if(data?.length!==toAdd.length)throw Error('Could not confirm every new registration.');
+    }
+    // Read the actual server state, not just the on-screen checkboxes.
+    const {data:verified,error:verifyError}=await sb.from('athletics_registrations')
+      .select('athlete_id').eq('event_id',e.id);
+    if(verifyError)throw verifyError;
+    const actual=new Set((verified||[]).filter(r=>visibleIds.has(r.athlete_id)).map(r=>r.athlete_id));
+    if(actual.size!==selected.size||[...selected].some(id=>!actual.has(id)))
+      throw Error('The saved registrations do not match the selection. Please review and retry.');
+    await reloadData();
+    msg($('regMsg'),'Registrations saved and verified.','good');
+  }catch(error){
+    await reloadData();
+    msg($('regMsg'),'SAVE NOT COMPLETED: '+(error.message||String(error))+'. Check the registrations before retrying.','bad');
+  }finally{button.disabled=false}
 }
 function entriesForHeat(id){return state.entries.filter(x=>x.heat_id===id)}
 function athleteForEntry(en){
