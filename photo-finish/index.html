@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>FieldFlow Photo Finish · Latest Camera</title>
+<title>FieldFlow Photo Finish V2</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--navy:#061722;--navy2:#071d2d;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--muted:#9fb0bf}
@@ -87,12 +87,17 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 .slider .small{font-size:9px}
 input[type=range]{width:100%;margin:0;touch-action:pan-x}
 #prevFrame,#markFinish,#nextFrame{min-height:44px;padding:7px 4px;font-size:12px;touch-action:manipulation}
-#assignPanel{display:none;position:absolute;z-index:50;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));background:#071d2df7;border:1px solid #285067;border-radius:14px;padding:10px;box-shadow:0 10px 40px #000b}
-#assignPanel.show{display:block}
-.assignTitle{text-align:center;font-weight:900;font-size:13px;margin-bottom:7px}
-.lanes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+#assignPanel{display:none;position:fixed;z-index:1000;left:8px;right:8px;top:calc(118px + env(safe-area-inset-top));bottom:calc(82px + env(safe-area-inset-bottom));background:#071d2df7;border:1px solid #285067;border-radius:14px;padding:10px;box-shadow:0 10px 40px #000b;overflow:hidden}
+#assignPanel.show{display:flex;flex-direction:column}
+.assignTitle{text-align:center;font-weight:900;font-size:13px;margin-bottom:7px;flex:0 0 auto;position:sticky;top:0;background:#071d2df7;z-index:2;padding-bottom:2px}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1 1 auto;padding-right:2px;align-content:start}
 .laneBtn{background:#102f44;color:#fff;text-align:left;border:1px solid #ffffff18;padding:8px 9px;min-height:48px;touch-action:manipulation}
 .laneBtn.saved{background:#153b31;border-color:var(--green)}
+#assignPanel.largeHeat .lanes{gap:4px}
+#assignPanel.largeHeat .laneBtn{min-height:42px;padding:6px 7px}
+#assignPanel.largeHeat .laneNo{font-size:12px}
+#assignPanel.largeHeat .athlete{font-size:8px}
+#assignPanel.largeHeat .savedTime{font-size:9px}
 .laneNo{font-size:14px;color:var(--cyan);font-weight:900}.athlete{display:block;font-size:9px;color:#d8e2e9;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.savedTime{display:block;font-size:10px;color:#7cf0bf;margin-top:2px}
 .pendingTime{color:var(--orange)!important}
 .marks{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;max-height:86px;min-height:0;overflow-y:auto;overscroll-behavior:contain;border-top:1px solid #ffffff18;padding-top:4px}
@@ -114,6 +119,12 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
   .playBtn,.pauseBtn{min-height:38px}
   .reviewTime{font-size:22px}
   #prevFrame,#markFinish,#nextFrame{min-height:40px;font-size:11px}
+}
+@media(max-height:820px){
+  #assignPanel{top:calc(104px + env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom));padding:8px}
+  .lanes{gap:5px}
+  .laneBtn{min-height:44px;padding:7px 8px}
+  .laneNo{font-size:13px}
 }
 @media(max-height:700px){
   header{min-height:42px;padding:5px 7px}
@@ -213,8 +224,10 @@ const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),s
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn'),reviewBackBtn=$('reviewBackBtn'),liveCameraBtn=$('liveCameraBtn');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0;
+let stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
+const pendingStoreKey='ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown'));
+let saveInProgress=false;
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
@@ -223,6 +236,107 @@ const fmt=ms=>{ms=Math.max(0,ms||0);const m=Math.floor(ms/60000),s=Math.floor((m
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const elapsed=()=>raceRunning?performance.now()-raceStart:0;
 function tick(){timer.textContent=fmt(elapsed());raf=requestAnimationFrame(tick)}
+
+function persistPendingAssignments(){
+  try{
+    if(!stagedAssignments.size){
+      localStorage.removeItem(pendingStoreKey);
+      return;
+    }
+    const payload={
+      version:1,
+      savedAt:Date.now(),
+      heatId:heatId||null,
+      eventId:eventId||null,
+      relayMode,
+      assignments:[...stagedAssignments.entries()].map(([id,sec])=>[String(id),Number(sec)])
+    };
+    localStorage.setItem(pendingStoreKey,JSON.stringify(payload));
+  }catch(err){console.warn('Could not persist pending Photo Finish results',err)}
+}
+
+function clearPendingAssignments(){
+  try{localStorage.removeItem(pendingStoreKey)}catch(_){}
+}
+
+function restorePendingAssignments(){
+  try{
+    const raw=localStorage.getItem(pendingStoreKey);
+    if(!raw)return 0;
+    const payload=JSON.parse(raw);
+    if(!payload||!Array.isArray(payload.assignments))return 0;
+    if(Date.now()-Number(payload.savedAt||0)>24*60*60*1000){
+      clearPendingAssignments();
+      return 0;
+    }
+
+    let restored=0;
+    for(const row of payload.assignments){
+      const entryId=String(row&&row[0]||'');
+      const sec=Number(row&&row[1]);
+      if(!entryId||!Number.isFinite(sec))continue;
+      const en=heatEntries.find(x=>String(x.id)===entryId);
+      if(!en)continue;
+
+      const alreadySaved=en.official_time!=null &&
+        Math.abs(Number(en.official_time)-sec)<0.0005 &&
+        en.status==='finished';
+      if(alreadySaved)continue;
+
+      stagedAssignments.set(en.id,sec);
+      const existing=marks.findIndex(m=>String(m.entryId)===String(en.id));
+      const mark={time:sec*1000,lane:en.lane,entryId:en.id};
+      if(existing>=0)marks[existing]=mark;else marks.push(mark);
+      restored++;
+    }
+
+    if(!restored)clearPendingAssignments();
+    return restored;
+  }catch(err){
+    console.warn('Could not restore pending Photo Finish results',err);
+    return 0;
+  }
+}
+
+function releaseReviewMediaForSave(){
+  try{reviewVideo.pause()}catch(_){}
+  try{
+    reviewVideo.removeAttribute('src');
+    reviewVideo.load();
+  }catch(_){}
+  if(videoUrl){
+    try{URL.revokeObjectURL(videoUrl)}catch(_){}
+    videoUrl=null;
+  }
+  chunks=[];
+  suspendLiveCamera();
+}
+
+function showRecoveredPendingState(){
+  camera.style.display='none';
+  reviewVideo.style.display='none';
+  reviewPanel.classList.add('show');
+  document.querySelector('.app').classList.add('reviewMode');
+  const latest=[...stagedAssignments.values()].reduce((m,v)=>Math.max(m,Number(v)||0),0);
+  timer.textContent=fmt(latest*1000);
+  reviewTime.textContent=fmt(latest*1000);
+  mode.textContent='RECOVERED RESULTS';
+  status.textContent='Recovered '+stagedAssignments.size+' unsaved results · press SAVE RESULTS.';
+  renderLanes();
+  renderMarks();
+}
+
+function suspendLiveCamera(){
+  try{
+    if(stream){
+      stream.getTracks().forEach(track=>{try{track.stop()}catch(_){}});
+      stream=null;
+    }
+    camera.pause();
+    camera.srcObject=null;
+    reviewCameraSuspended=true;
+  }catch(_){}
+}
 
 async function openCamera(){
   cameraBtn.style.display='none';
@@ -386,9 +500,16 @@ recordBtn.addEventListener('click',()=>{
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{
     const blob=new Blob(chunks,{type:recorder.mimeType||type||'video/webm'});
+    chunks=[];
     if(videoUrl)URL.revokeObjectURL(videoUrl);
-    videoUrl=URL.createObjectURL(blob);resetReviewOrientation();reviewVideo.src=videoUrl;reviewVideo.load();reviewBtn.disabled=false;
-    status.textContent='Video listo para revisar';mode.textContent='Grabación finalizada';
+    videoUrl=URL.createObjectURL(blob);
+    resetReviewOrientation();
+    reviewVideo.src=videoUrl;
+    reviewVideo.load();
+    reviewBtn.disabled=false;
+    recorder=null;
+    status.textContent='Video listo para revisar';
+    mode.textContent='Grabación finalizada';
   };
   recorder.start(500);recordBtn.disabled=true;mode.textContent='● GRABANDO';
 });
@@ -398,6 +519,7 @@ stopBtn.addEventListener('click',()=>{
 });
 reviewBtn.addEventListener('click',()=>{
   if(!videoUrl)return;
+  suspendLiveCamera();
   camera.style.display='none';
   reviewVideo.style.display='block';
   reviewPanel.classList.add('show');
@@ -408,15 +530,25 @@ reviewBtn.addEventListener('click',()=>{
   updateReview();
   mode.textContent='REVIEW';
 });
-function returnToLiveCamera(){
+async function returnToLiveCamera(){
+  if(stagedAssignments.size>0){
+    const leave=confirm('Hay tiempos pendientes sin SAVE RESULTS. ¿Volver a LIVE CAMERA igualmente?');
+    if(!leave)return;
+  }
   reviewVideo.pause();
   reviewPanel.classList.remove('show');
   document.querySelector('.app').classList.remove('reviewMode');
   resetReviewOrientation();
   reviewVideo.style.display='none';
   camera.style.display='block';
-  try{camera.play()}catch(_){}
-  mode.textContent='Cámara lista';
+  mode.textContent='Reabriendo cámara…';
+  if(reviewCameraSuspended||!stream){
+    await openCamera();
+    reviewCameraSuspended=false;
+  }else{
+    try{await camera.play()}catch(_){}
+    mode.textContent='Cámara lista';
+  }
 }
 liveCameraBtn.addEventListener('click',returnToLiveCamera);
 reviewBackBtn.addEventListener('click',()=>backBtn.click());
@@ -463,7 +595,8 @@ async function loadHeat(){
       const {data:rows,error:re}=await sb.from('athletics_relay_results').select('*').eq('event_id',eventId).order('lane');if(re)throw re;
       const teamIds=(rows||[]).map(x=>x.relay_team_id).filter(Boolean);
       let teams=[];if(teamIds.length){const q=await sb.from('athletics_relay_teams').select('*').in('id',teamIds);if(q.error)throw q.error;teams=q.data||[]}
-      heatEntries=(rows||[]).map(en=>({...en,relayColor:(teams.find(t=>t.id===en.relay_team_id)||{}).color||''}));
+      heatEntries=(rows||[]).map((en,i)=>({...en,displayOrder:i+1,relayColor:(teams.find(t=>t.id===en.relay_team_id)||{}).color||''}));
+      restorePendingAssignments();
       heatContext.innerHTML='<span class="heatTitle">'+esc(ev.name)+' · FINAL</span><span class="heatCount">'+heatEntries.length+' relay teams</span>';heatContext.classList.add('show');
       renderLanes();return;
     }
@@ -475,27 +608,38 @@ async function loadHeat(){
     let regs=[];if(regIds.length){const q=await sb.from('athletics_registrations').select('*').in('id',regIds);if(q.error)throw q.error;regs=q.data||[]}
     const athleteIds=regs.map(r=>r.athlete_id).filter(Boolean);
     let athletes=[];if(athleteIds.length){const q=await sb.from('athletics_athletes').select('*').in('id',athleteIds);if(q.error)throw q.error;athletes=q.data||[]}
-    heatEntries=(entries||[]).map(en=>{const reg=regs.find(r=>r.id===en.registration_id);const athlete=reg?athletes.find(a=>a.id===reg.athlete_id):null;return {...en,athlete}});
-    heatContext.innerHTML='<b>'+esc(ev.name)+'</b> · Heat '+esc(h.heat_number)+'<br><span class="small">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
+    heatEntries=(entries||[]).map((en,i)=>{const reg=regs.find(r=>r.id===en.registration_id);const athlete=reg?athletes.find(a=>a.id===reg.athlete_id):null;return {...en,displayOrder:i+1,athlete,registration:reg||null}});
+    restorePendingAssignments();
+    heatContext.innerHTML='<span class="heatTitle">'+esc(ev.name)+' · Heat '+esc(h.heat_number)+'</span><span class="heatCount">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
     renderLanes();
   }catch(err){heatContext.innerHTML='<span style="color:#ff9f1c">Load error: '+esc(err.message||err)+'</span>';heatContext.classList.add('show')}
 }
 function renderLanes(){
-  laneButtons.innerHTML=heatEntries.sort((a,b)=>(a.lane??999)-(b.lane??999)).map((en,i)=>{
-    const a=en.athlete||{},lane=en.lane??(i+1),displayName=relayMode?('Relay '+(en.relayColor||'')):((a.last_name||'')+', '+(a.first_name||''));
+  assignPanel.classList.toggle('largeHeat',heatEntries.length>8);
+  laneButtons.innerHTML=heatEntries.slice().sort((a,b)=>{
+    const al=a.lane,bl=b.lane;
+    if(al!=null&&bl!=null)return al-bl;
+    if(al!=null)return -1;
+    if(bl!=null)return 1;
+    return (a.displayOrder||999)-(b.displayOrder||999);
+  }).map((en,i)=>{
+    const a=en.athlete||{};
+    const runnerNo=en.displayOrder||i+1;
+    const positionLabel=en.lane!=null?'Lane '+en.lane:'Runner '+runnerNo;
+    const displayName=relayMode?('Relay '+(en.relayColor||'')):((a.last_name||'')+', '+(a.first_name||''));
     const staged=stagedAssignments.get(en.id);
     const saved=en.official_time!=null?Number(en.official_time).toFixed(3):'';
     const shown=staged!=null?Number(staged).toFixed(3):saved;
     const cls=staged!=null?'pendingTime':(saved?'saved':'');
     const label=staged!=null?'<span class="savedTime pendingTime">Pending: '+shown+' s</span>':(saved?'<span class="savedTime">Saved: '+saved+' s</span>':'');
-    return '<button class="laneBtn '+cls+'" data-entry="'+en.id+'"><span class="laneNo">Lane '+lane+'</span><span class="athlete">'+esc(displayName)+'</span>'+label+'</button>'
+    return '<button class="laneBtn '+cls+'" data-entry="'+en.id+'"><span class="laneNo">'+positionLabel+'</span><span class="athlete">'+esc(displayName)+'</span>'+label+'</button>'
   }).join('');
   laneButtons.querySelectorAll('.laneBtn').forEach(b=>b.addEventListener('click',()=>stageLane(b.dataset.entry)));
   updateSaveButton();
 }
 markFinish.addEventListener('click',()=>{
   pendingMs=currentMs();
-  if(heatEntries.length){assignTitle.textContent='Tiempo '+(pendingMs/1000).toFixed(3)+' s — selecciona carril';assignPanel.classList.add('show');renderLanes()}
+  if(heatEntries.length){assignTitle.textContent='Tiempo '+(pendingMs/1000).toFixed(3)+' s — selecciona corredor';assignPanel.classList.add('show');renderLanes()}
   else{marks.push({time:pendingMs});pendingMs=null;renderMarks()}
 });
 function stageLane(entryId){
@@ -503,6 +647,7 @@ function stageLane(entryId){
   const en=heatEntries.find(x=>x.id===entryId);if(!en)return;
   const sec=Number((pendingMs/1000).toFixed(3));
   stagedAssignments.set(entryId,sec);
+  persistPendingAssignments();
   const existing=marks.findIndex(m=>m.entryId===entryId);
   const mark={time:pendingMs,lane:en.lane,entryId};
   if(existing>=0)marks[existing]=mark;else marks.push(mark);
@@ -518,36 +663,81 @@ function updateSaveButton(){
   saveResultsBtn.textContent=count>0?'SAVE RESULTS ('+count+')':'SAVE RESULTS';
 }
 saveResultsBtn.addEventListener('click',async()=>{
-  if(!sb||!stagedAssignments.size)return;
+  if(!sb||!stagedAssignments.size||saveInProgress)return;
+
+  saveInProgress=true;
   saveResultsBtn.disabled=true;
   saveResultsBtn.textContent='SAVING…';
-  status.textContent='Guardando resultados…';
+  status.textContent='Guardando y verificando resultados…';
+  mode.textContent='SAVING RESULTS';
+
+  // Android can reclaim a PWA under memory pressure. The video is no longer
+  // needed once all finish times have been assigned, so free it before network I/O.
+  releaseReviewMediaForSave();
+  persistPendingAssignments();
+
+  const pending=[...stagedAssignments.entries()].map(([entryId,sec])=>({entryId,sec:Number(sec)}));
+  const table=relayMode?'athletics_relay_results':'athletics_track_entries';
+
   try{
-    for(const [entryId,sec] of stagedAssignments.entries()){
-      const table=relayMode?'athletics_relay_results':'athletics_track_entries';
-      const {error}=await sb.from(table)
-        .update({official_time:sec,status:'finished',updated_at:new Date().toISOString()})
-        .eq('id',entryId);
-      if(error)throw error;
-      const en=heatEntries.find(x=>x.id===entryId);
-      if(en){en.official_time=sec;en.status='finished'}
+    // Limit concurrent requests to avoid long sequential saves without flooding mobile radios.
+    const concurrency=4;
+    for(let i=0;i<pending.length;i+=concurrency){
+      const batch=pending.slice(i,i+concurrency);
+      const results=await Promise.all(batch.map(async item=>{
+        const {error}=await sb.from(table)
+          .update({official_time:item.sec,status:'finished',updated_at:new Date().toISOString()})
+          .eq('id',item.entryId);
+        return {item,error};
+      }));
+      const failed=results.find(x=>x.error);
+      if(failed)throw failed.error;
     }
+
+    // Verify every write before clearing the local recovery copy.
+    const ids=pending.map(x=>x.entryId);
+    const {data:verified,error:verifyError}=await sb.from(table)
+      .select('id,official_time,status')
+      .in('id',ids);
+    if(verifyError)throw verifyError;
+
+    const byId=new Map((verified||[]).map(x=>[String(x.id),x]));
+    for(const item of pending){
+      const row=byId.get(String(item.entryId));
+      const ok=row && row.status==='finished' && row.official_time!=null &&
+        Math.abs(Number(row.official_time)-item.sec)<0.0005;
+      if(!ok)throw new Error('No se pudo verificar el resultado de un corredor. Los tiempos pendientes se conservaron para reintentar.');
+    }
+
+    for(const item of pending){
+      const en=heatEntries.find(x=>String(x.id)===String(item.entryId));
+      if(en){en.official_time=item.sec;en.status='finished'}
+    }
+
     stagedAssignments.clear();
-    status.textContent='Resultados guardados correctamente.';
+    clearPendingAssignments();
+    status.textContent='Resultados guardados y verificados correctamente.';
     mode.textContent='RESULTS SAVED';
     renderLanes();
     renderMarks();
   }catch(err){
     console.error(err);
-    status.textContent='Error al guardar: '+(err.message||err);
+    persistPendingAssignments();
+    status.textContent='Error al guardar: '+(err.message||err)+' · Los tiempos quedaron respaldados.';
+    mode.textContent='SAVE FAILED · RESULTS RECOVERED';
   }finally{
+    saveInProgress=false;
     saveResultsBtn.disabled=false;
     updateSaveButton();
   }
 });
-function renderMarks(){marksEl.innerHTML=marks.slice().sort((a,b)=>a.time-b.time).map((m,i)=>'<div class="markRow"><span>'+(m.lane!=null?'Lane '+m.lane:'Lugar '+(i+1))+'</span><strong>'+fmt(m.time)+'</strong></div>').join('')}
+function renderMarks(){marksEl.innerHTML=marks.slice().sort((a,b)=>a.time-b.time).map((m,i)=>'<div class="markRow"><span>'+(m.lane!=null?'Lane '+m.lane:'Runner '+(i+1))+'</span><strong>'+fmt(m.time)+'</strong></div>').join('')}
 
 function closeCameraAndBack(){
+  if(saveInProgress){
+    status.textContent='Espera a que termine SAVE RESULTS.';
+    return;
+  }
   document.querySelector('.app').classList.remove('reviewMode');
   if(stagedAssignments.size>0){
     const leave=confirm('Hay tiempos pendientes sin SAVE RESULTS. ¿Volver al heat igualmente?');
@@ -593,47 +783,31 @@ function closeCameraAndBack(){
 }
 backBtn.addEventListener('click',closeCameraAndBack);
 
-loadHeat();
-openCamera();
-});
-</script>
-<script>
-(function(){
-  const VERSION_URL='../version.json';
-  let loadedBuild=null,checking=false,reloading=false;
-  async function checkVersion(){
-    if(checking||reloading)return;
-    checking=true;
-    try{
-      const r=await fetch(VERSION_URL+'?t='+Date.now(),{cache:'no-store'});
-      if(!r.ok)return;
-      const v=await r.json();
-      const badge=document.getElementById('buildBadge');
-      if(badge)badge.textContent='Single Screen · '+String(v.build||'live').slice(0,7);
-      if(loadedBuild===null){loadedBuild=v.build||null;return}
-      if(v.build&&loadedBuild&&v.build!==loadedBuild){
-        reloading=true;
-        const reg=await navigator.serviceWorker.getRegistration('../');
-        if(reg)await reg.update();
-        location.reload();
-      }
-    }catch(e){console.warn('Version check failed',e)}
-    finally{checking=false}
+window.addEventListener('beforeunload',e=>{
+  const recordingActive=raceRunning||(recorder&&recorder.state==='recording');
+  const unsaved=stagedAssignments.size>0;
+  if(recordingActive||unsaved||saveInProgress){
+    e.preventDefault();
+    e.returnValue='';
   }
-  if('serviceWorker' in navigator){
-    window.addEventListener('load',async()=>{
-      try{
-        const reg=await navigator.serviceWorker.register('../service-worker.js',{updateViaCache:'none'});
-        await reg.update();
-      }catch(e){console.error(e)}
-      checkVersion();
-      setInterval(checkVersion,60000);
-    });
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloading){reloading=true;location.reload()}});
-  }else window.addEventListener('load',checkVersion);
-  window.addEventListener('focus',checkVersion);
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersion()});
+});
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='hidden' && (raceRunning||stagedAssignments.size>0)){
+    // Deliberately do nothing: preserve the current race/review state.
+    return;
+  }
+});
+
+(async()=>{
+  await loadHeat();
+  if(stagedAssignments.size){
+    showRecoveredPendingState();
+  }else{
+    await openCamera();
+  }
 })();
+});
 </script>
 </body>
 </html>
