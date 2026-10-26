@@ -61,17 +61,18 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 async function login(){const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});if(error){$('loginMsg').innerHTML='<div class="message">'+esc(error.message)+'</div>';return}boot()}
 async function boot(){const {data:{session}}=await sb.auth.getSession();if(!session){$('login').classList.remove('hidden');$('app').classList.add('hidden');return}$('login').classList.add('hidden');$('app').classList.remove('hidden');await load()}
 async function load(){
- const [o,c,l]=await Promise.all([
+ const [o,c,l,a]=await Promise.all([
   sb.from('athletics_scoreboard_overall').select('*').eq('tournament_id',TID),
   sb.from('athletics_scoreboard_by_category').select('*').eq('tournament_id',TID),
-  sb.from('athletics_points_ledger').select('*').eq('tournament_id',TID).order('category').order('gender').order('event_name').order('place')
+  sb.from('athletics_points_ledger').select('*').eq('tournament_id',TID).order('category').order('gender').order('event_name').order('place'),
+  sb.from('athletics_score_adjustments').select('event_name,category,gender,color,points,reason').eq('tournament_id',TID)
  ]);
- if(o.error||c.error||l.error){alert((o.error||c.error||l.error).message);return}
+ if(o.error||c.error||l.error||a.error){alert((o.error||c.error||l.error||a.error).message);return}
  const om=Object.fromEntries((o.data||[]).map(x=>[x.color,Number(x.points)]));
  $('overall').innerHTML=colors.map(col=>'<div class="house '+col+'"><span><i class="dot '+col+'"></i>'+col+'</span><b>'+((om[col]||0).toFixed(2).replace('.00',''))+'</b><span>points</span></div>').join('');
  const cm={};(c.data||[]).forEach(x=>{cm[x.color+'|'+x.category]=Number(x.points)});
  $('catBody').innerHTML=colors.map(col=>'<tr><td><i class="dot '+col+'"></i><b>'+col+'</b></td>'+cats.map(cat=>'<td>'+(cm[col+'|'+cat]||0)+'</td>').join('')+'<td class="leader">'+(om[col]||0)+'</td></tr>').join('');
- $('ledger').innerHTML=(l.data||[]).map(x=>'<tr><td>'+esc(x.event_name)+'</td><td>'+esc(x.category)+'</td><td>'+(x.gender==='F'?'Girls':'Boys')+'</td><td>'+esc(x.last_name)+', '+esc(x.first_name)+'</td><td><i class="dot '+esc(x.color)+'"></i>'+esc(x.color)+'</td><td>'+x.place+'</td><td>'+esc(x.performance_numeric)+' '+esc(x.performance_unit)+'</td><td><b>'+x.points+'</b></td></tr>').join('')||'<tr><td colspan="8" class="muted" style="text-align:center">No scoring results yet.</td></tr>';
+ $('ledger').innerHTML=[...(l.data||[]),...(a.data||[]).map(x=>({...x,event_name:x.event_name||x.reason,first_name:'Official',last_name:'Relay',place:'—',performance_numeric:'—',performance_unit:'',is_adjustment:true}))].map(x=>'<tr><td>'+esc(x.event_name)+'</td><td>'+esc(x.category)+'</td><td>'+(x.gender==='F'?'Girls':'Boys')+'</td><td>'+esc(x.last_name)+', '+esc(x.first_name)+'</td><td><i class="dot '+esc(x.color)+'"></i>'+esc(x.color)+'</td><td>'+x.place+'</td><td>'+esc(x.performance_numeric)+' '+esc(x.performance_unit)+'</td><td><b>'+x.points+'</b></td></tr>').join('')||'<tr><td colspan="8" class="muted" style="text-align:center">No scoring results yet.</td></tr>';
 }
 $('signIn').onclick=login;$('password').addEventListener('keydown',e=>{if(e.key==='Enter')login()});$('refresh').onclick=load;boot();
 </script>
