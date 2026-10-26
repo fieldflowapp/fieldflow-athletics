@@ -37,7 +37,19 @@ tfoot td{position:sticky;bottom:0;background:#eaf3f8;font-weight:900;color:#0d26
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:8px}.sw{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px}.sw.track{background:#0b5fff}.sw.field{background:#087856}.sw.relay{background:#7250db}
 .printhead{display:none}
 .login{max-width:420px;margin:10vh auto}.login .panel{padding:22px}.login input{width:100%;margin:6px 0 10px;background:#061c2a;border:1px solid #21465a;color:white;border-radius:10px;padding:11px}
-@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}.tablewrap{max-height:calc(100vh - 330px)}}
+@media(max-width:900px){.filters{grid-template-columns:1fr 1fr}.filters .wide{grid-column:1/-1}.tablewrap{max-height:calc(100dvh - 330px)}}
+@media(max-width:700px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .shell{width:100%;max-width:100%;min-width:0;padding:9px}
+  .panel,.pad{min-width:0;max-width:100%}
+  .topbar{flex-wrap:wrap}
+  .tablewrap{display:block;width:100%;max-width:100%;min-width:0;overflow-x:auto!important;overflow-y:auto!important;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;max-height:calc(100dvh - 310px);min-height:260px}
+  .tablewrap table{width:max-content!important;min-width:100%;table-layout:auto}
+  .athlete-no{width:32px;min-width:32px}.athlete-id{width:54px;min-width:54px}.athlete-surname{width:100px;min-width:100px}.athlete-name{width:100px;min-width:100px}
+  .athlete-id{left:32px}.athlete-surname{left:86px}.athlete-name{left:186px}
+  th,td{padding:9px 6px}
+  .check{width:24px;height:24px;touch-action:manipulation}
+}
 @media print{
   @page{size:A4 landscape;margin:8mm}
   body{background:white;color:#111}.topbar,.filters,.statusbar,.legend,.login{display:none!important}.shell{padding:0;max-width:none}.panel{border:0;box-shadow:none;border-radius:0;background:white}.pad{padding:0}.printhead{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:8mm;color:#111}.printbrand{display:flex;gap:10px;align-items:center}.printbrand img{width:58px;height:58px;border-radius:10px;object-fit:cover;background:#000}.printbrand h1{font-size:20px;margin:0}.printmeta{font-size:11px;line-height:1.5;text-align:right}
