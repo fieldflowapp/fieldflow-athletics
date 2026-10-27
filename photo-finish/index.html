@@ -228,7 +228,7 @@ const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCam
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
 let clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
-const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
+const params=new URLSearchParams(location.search),demoMode=params.get('demo')==='1',heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
 const preferredCameraKey='ff-photo-camera-device';
 const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
 let preferredCameraId=isDesktopCapture?(localStorage.getItem(preferredCameraKey)||''):'';
@@ -255,7 +255,7 @@ cameraSelect.addEventListener('change',async()=>{
  }catch(e){preferredCameraId=prev;status.textContent='Error al cambiar cámara: '+e.message;await openCamera()}
 });
 if(isDesktopCapture&&navigator.mediaDevices?.addEventListener)navigator.mediaDevices.addEventListener('devicechange',listCameras);
-const pendingStoreKey='ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown'));
+const pendingStoreKey=demoMode?'ff-photo-pending-demo-v1':('ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown')));
 let saveInProgress=false;
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
@@ -711,6 +711,15 @@ nextFrame.addEventListener('click',()=>step(1));
 });
 
 async function loadHeat(){
+  if(demoMode){
+    const testNames=[['Matías','Rojas','Red'],['Benjamín','Silva','Blue'],['Tomás','Muñoz','White'],['Vicente','Castro','Green'],['Joaquín','Pérez','Red'],['Martín','Soto','Blue'],['Diego','Fuentes','White'],['Agustín','Morales','Green']];
+    heatEntries=testNames.map(([first_name,last_name,color],i)=>({id:'demo-athlete-'+(i+1),lane:i+1,displayOrder:i+1,athlete:{first_name,last_name,color},status:'pending'}));
+    heatContext.innerHTML='<span class="heatTitle">Y8 BOYS · 80 METRES · HEAT 1 · TEST</span><span class="heatCount">8 athletes · DEMO</span>';
+    heatContext.classList.add('show');
+    heatContext.style.background='#56221a';
+    document.querySelector('.brand').innerHTML='FieldFlow <span>Photo Finish · DEMO</span>';
+    renderLanes();return;
+  }
   if(!sb)return;
   try{
     if(relayMode){
@@ -750,7 +759,7 @@ function renderLanes(){
     const a=en.athlete||{};
     const runnerNo=en.displayOrder||i+1;
     const positionLabel=en.lane!=null?'Lane '+en.lane:'Runner '+runnerNo;
-    const displayName=relayMode?('Relay '+(en.relayColor||'')):((a.last_name||'')+', '+(a.first_name||''));
+    const displayName=relayMode?('Relay '+(en.relayColor||'')):((a.last_name||'')+', '+(a.first_name||'')+(demoMode?' · '+(a.color||''):''));
     const staged=stagedAssignments.get(en.id);
     const saved=en.official_time!=null?Number(en.official_time).toFixed(3):'';
     const shown=staged!=null?Number(staged).toFixed(3):saved;
@@ -787,7 +796,14 @@ function updateSaveButton(){
   saveResultsBtn.textContent=count>0?'SAVE RESULTS ('+count+')':'SAVE RESULTS';
 }
 saveResultsBtn.addEventListener('click',async()=>{
-  if(!sb||!stagedAssignments.size||saveInProgress)return;
+  if(!stagedAssignments.size||saveInProgress)return;
+  if(demoMode){
+    for(const [id,sec] of stagedAssignments){const en=heatEntries.find(e=>e.id===id);if(en){en.official_time=sec;en.status='finished'}}
+    stagedAssignments.clear();clearPendingAssignments();
+    status.textContent='DEMO · tiempos guardados solo en esta pantalla. No se enviaron a Supabase.';
+    mode.textContent='DEMO RESULTS SAVED';renderLanes();renderMarks();return;
+  }
+  if(!sb)return;
 
   saveInProgress=true;
   saveResultsBtn.disabled=true;
@@ -886,6 +902,7 @@ function closeCameraAndBack(){
     camera.srcObject=null;fpsSelect.disabled=false;
   }catch(e){}
 
+  if(demoMode&&!returnUrl){location.replace('../');return;}
   let target=returnUrl;
   if(target){
     if(target.startsWith('./?')){
