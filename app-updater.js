@@ -20,6 +20,7 @@
    document.body.appendChild(overlay);
    overlay.querySelector('button').addEventListener('click',async()=>{
     if(!safe()){show('Actualización pendiente','Termina la grabación, guarda los resultados y descarga el video antes de actualizar.','Esperando finalización',true);return}
+    if(!needsUpdate){await check();return}
     const btn=overlay.querySelector('button');btn.disabled=true;btn.textContent='Actualizando…';
     try{
      if('serviceWorker' in navigator){
