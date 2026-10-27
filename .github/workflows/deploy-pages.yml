@@ -25,9 +25,10 @@ jobs:
       - name: Test Class Mode logic
         run: node --test tests/class-logic.test.cjs
       - name: Install isolated browser test runtime
+        timeout-minutes: 4
         run: |
-          npm install --prefix /tmp/ff-browser-runtime --ignore-scripts playwright@1.56.1
-          /tmp/ff-browser-runtime/node_modules/.bin/playwright install --with-deps chromium
+          npm install --prefix /tmp/ff-browser-runtime --ignore-scripts --fetch-timeout=60000 --fetch-retries=1 playwright@1.56.1
+          /tmp/ff-browser-runtime/node_modules/.bin/playwright install --only-shell chromium
       - name: Test desktop and mobile Class Mode
         env:
           CODEX_PRIMARY_RUNTIME_NODE_MODULES: /tmp/ff-browser-runtime/node_modules
