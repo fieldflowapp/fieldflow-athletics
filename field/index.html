@@ -404,7 +404,14 @@ async function saveRegistrations(){
     if(add.some(a=>!verified?.some(r=>String(r.athlete_id)===String(a.id)&&r.status==='registered')))
       throw Error('One or more registrations were not saved.');
     await reloadData();
-    msg($('regMsg'),add.length+' registered, '+remove.length+' withdrawn. Changes verified.','good');
+    // Do not report success unless newly registered athletes are visible in
+    // this event's Competition Sheet. This is especially important on mobile.
+    const sheetIds=new Set(registeredRows().map(x=>String(x.a.id)));
+    const missing=add.filter(a=>!sheetIds.has(String(a.id)));
+    if(missing.length)throw Error('Registration saved but these athletes are missing from Competition Sheet: '+missing.map(a=>a.last_name+', '+a.first_name).join('; '));
+    setTab('sheet');
+    const sheetMessage=$('sheetMsg');
+    if(sheetMessage)msg(sheetMessage,add.length+' registered, '+remove.length+' withdrawn. Competition Sheet updated.','good');
   }catch(error){
     msg($('regMsg'),'SAVE FAILED — '+(error.message||String(error)),'bad');
   }finally{
