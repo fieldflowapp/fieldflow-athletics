@@ -79,6 +79,7 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 .captureSettings{display:grid;grid-template-columns:auto 1fr;gap:5px;align-items:center}
 .captureSettings label{font-size:10px;color:#d9f7ff;font-weight:800}
 .captureSettings select{width:128px;background:#061c2a;border:1px solid #21465a;color:#fff;border-radius:8px;padding:7px 6px;font-size:12px}
+.desktopCamera{display:none;grid-template-columns:66px minmax(0,1fr) 42px;gap:6px;align-items:center}.desktopCamera label{font-size:11px;font-weight:bold}.desktopCamera select{min-width:0;width:100%;padding:7px;background:#061c2a;border:1px solid #21465a;border-radius:8px;color:white}.desktopCamera button{min-height:34px;background:#173247;color:#fff}.desktopCamera.show{display:grid}
 .playbackRow{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:7px;align-items:center}
 .reviewTime{text-align:center;font-size:25px;font-weight:900;font-variant-numeric:tabular-nums;min-width:0}
 .playBtn,.pauseBtn{min-height:42px;padding:7px;font-size:18px;border-radius:10px;touch-action:manipulation}
@@ -172,6 +173,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
 <button id="cameraBtn" class="cameraBtn">ACTIVATE CAMERA</button>
 <div class="row"><button id="startBtn" class="primary" disabled>START</button><button id="recordBtn" class="record" disabled>● RECORD</button></div>
 <div class="row"><button id="stopBtn" class="dark" disabled>STOP</button><button id="reviewBtn" class="dark" disabled>REVIEW</button></div>
+<div class="desktopCamera" id="desktopCamera"><label for="cameraSelect">CÁMARA</label><select id="cameraSelect" aria-label="Seleccionar cámara"><option value="">Cámara automática</option></select><button id="refreshCameras" type="button" aria-label="Actualizar cámaras" title="Buscar cámaras">↻</button></div>
 <div class="captureMeta">
   <div id="qualityBadge" class="qualityBadge"></div>
   <div class="captureSettings">
@@ -222,10 +224,37 @@ const $=id=>document.getElementById(id);
 const camera=$('camera'),reviewVideo=$('reviewVideo'),timer=$('timer'),mode=$('mode'),status=$('status');
 const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),stopBtn=$('stopBtn'),reviewBtn=$('reviewBtn'),backBtn=$('backBtn'),qualityBadge=$('qualityBadge'),fpsSelect=$('fpsSelect');
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn'),reviewBackBtn=$('reviewBackBtn'),liveCameraBtn=$('liveCameraBtn');
+const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
+let cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
+const preferredCameraKey='ff-photo-camera-device';
+const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+let preferredCameraId=isDesktopCapture?(localStorage.getItem(preferredCameraKey)||''):'';
+if(isDesktopCapture)desktopCamera.classList.add('show');
+async function listCameras(){
+ if(!isDesktopCapture||!navigator.mediaDevices?.enumerateDevices)return;
+ try{
+  const devices=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput');
+  const activeId=stream?.getVideoTracks()[0]?.getSettings()?.deviceId||'';
+  const current=preferredCameraId||activeId;
+  cameraSelect.innerHTML='<option value="">Cámara automática</option>';
+  devices.forEach((d,i)=>{const opt=document.createElement('option');opt.value=d.deviceId;opt.textContent=d.label||('Cámara '+(i+1));cameraSelect.appendChild(opt)});
+  if(current&&devices.some(d=>d.deviceId===current))cameraSelect.value=current;
+  else if(preferredCameraId){preferredCameraId='';localStorage.removeItem(preferredCameraKey)}
+  cameraSelect.disabled=cameraOpening||raceRunning||(recorder&&recorder.state==='recording');
+ }catch(e){console.warn('Unable to list cameras',e)}
+}
+refreshCameras.addEventListener('click',listCameras);
+cameraSelect.addEventListener('change',async()=>{
+ if(raceRunning||recorder&&recorder.state==='recording'||reviewOpening||reviewPanel.classList.contains('show')){status.textContent='No puedes cambiar de cámara durante una carrera o Review.';await listCameras();return}
+ const prev=preferredCameraId;preferredCameraId=cameraSelect.value;
+ try{await openCamera();if(!stream)throw Error('Cámara no disponible');
+  if(preferredCameraId)localStorage.setItem(preferredCameraKey,preferredCameraId);else localStorage.removeItem(preferredCameraKey);
+ }catch(e){preferredCameraId=prev;status.textContent='Error al cambiar cámara: '+e.message;await openCamera()}
+});
+if(isDesktopCapture&&navigator.mediaDevices?.addEventListener)navigator.mediaDevices.addEventListener('devicechange',listCameras);
 const pendingStoreKey='ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown'));
 let saveInProgress=false;
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
@@ -340,6 +369,10 @@ function suspendLiveCamera(){
 }
 
 async function openCamera(){
+  if(cameraOpening)return;
+  if(raceRunning||(recorder&&recorder.state==='recording')||reviewOpening||reviewPanel.classList.contains('show'))return;
+  cameraOpening=true;
+  cameraSelect.disabled=true;
   cameraBtn.style.display='none';
   qualityBadge.classList.remove('show');
   status.textContent='Configurando cámara…';
@@ -367,15 +400,17 @@ async function openCamera(){
     };
 
     const profile=profiles[requestedFps]||profiles[60];
+    const selected=preferredCameraId?{deviceId:{exact:preferredCameraId}}:null;
+    const constraints=v=>selected?{...v,...selected}:v;
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:profile.primary,audio:false});
+      stream=await navigator.mediaDevices.getUserMedia({video:constraints(profile.primary),audio:false});
     }catch(firstErr){
       console.warn('Primary capture profile failed',firstErr);
       try{
-        stream=await navigator.mediaDevices.getUserMedia({video:profile.fallback,audio:false});
+        stream=await navigator.mediaDevices.getUserMedia({video:constraints(profile.fallback),audio:false});
       }catch(secondErr){
         console.warn('Fallback capture profile failed',secondErr);
-        stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+        stream=await navigator.mediaDevices.getUserMedia({video:constraints({facingMode:{ideal:'environment'}}),audio:false});
       }
     }
 
@@ -404,12 +439,14 @@ async function openCamera(){
     status.textContent='Cámara lista.';
     mode.textContent='Cámara lista';
     startBtn.disabled=false;
+    await listCameras();
   }catch(err){
     console.error(err);
     status.textContent='Error: '+(err.name||'CameraError')+' — '+(err.message||'No se pudo abrir la cámara');
     mode.textContent='Cámara no disponible';
     cameraBtn.style.display='block';
-  }
+    stream=null;
+  }finally{cameraOpening=false;cameraSelect.disabled=false;await listCameras()}
 }
 cameraBtn.addEventListener('click',openCamera);
 fpsSelect.addEventListener('change',async()=>{
@@ -423,7 +460,7 @@ fpsSelect.addEventListener('change',async()=>{
 
 startBtn.addEventListener('click',()=>{
   raceRunning=true;raceStart=performance.now();cancelAnimationFrame(raf);tick();
-  startBtn.disabled=true;recordBtn.disabled=false;stopBtn.disabled=false;fpsSelect.disabled=true;mode.textContent='Cronómetro en marcha';
+  startBtn.disabled=true;recordBtn.disabled=false;stopBtn.disabled=false;fpsSelect.disabled=true;cameraSelect.disabled=true;mode.textContent='Cronómetro en marcha';
 });
 
 function readOrientationAngle(){
@@ -518,7 +555,7 @@ recordBtn.addEventListener('click',()=>{
 });
 stopBtn.addEventListener('click',()=>{
   if(recorder&&recorder.state!=='inactive')recorder.stop();
-  raceRunning=false;cancelAnimationFrame(raf);stopBtn.disabled=true;recordBtn.disabled=true;fpsSelect.disabled=false;mode.textContent='Carrera detenida';
+  raceRunning=false;cancelAnimationFrame(raf);stopBtn.disabled=true;recordBtn.disabled=true;fpsSelect.disabled=false;cameraSelect.disabled=false;mode.textContent='Carrera detenida';
 });
 reviewBtn.addEventListener('click',async()=>{
   if(reviewOpening||(!videoUrl&&!recordingBlob))return;
