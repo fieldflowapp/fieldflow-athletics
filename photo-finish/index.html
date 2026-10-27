@@ -33,7 +33,7 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 #reviewVideo.orientationFix{position:absolute;left:50%;top:50%;max-width:none;max-height:none}
 .finish-line{position:absolute;top:0;bottom:0;left:50%;width:3px;background:var(--red);box-shadow:0 0 12px var(--red);pointer-events:none}
 .finish-line:after{content:"META";position:absolute;top:7px;left:7px;font-size:10px;font-weight:900;background:#ff4d4dcc;padding:3px 5px;border-radius:5px}
-.timerbox{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);background:#000b;padding:5px 10px;border-radius:10px;text-align:center;white-space:nowrap}
+.timerbox{position:absolute;left:50%;top:12px;bottom:auto;transform:translateX(-50%);background:#000b;padding:5px 10px;border-radius:10px;text-align:center;white-space:nowrap}
 #timer{font-size:27px;font-weight:900;font-variant-numeric:tabular-nums}.mode{font-size:10px;color:#ddd;margin-top:1px}
 .controls{flex:0 0 auto;background:var(--navy2);padding:7px 9px calc(7px + env(safe-area-inset-bottom));display:grid;gap:6px}
 .review{display:none;flex:0 0 auto;background:var(--navy2);padding:7px 9px calc(7px + env(safe-area-inset-bottom));gap:6px;border-top:1px solid #ffffff18}
@@ -46,7 +46,7 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
   max-height:min(48dvh,430px);
   min-height:0;
   overflow:hidden;
-  grid-template-rows:auto auto auto minmax(0,1fr) auto;
+  grid-template-rows:auto auto auto auto minmax(0,1fr) auto;
   padding-bottom:calc(74px + env(safe-area-inset-bottom));
 }
 .reviewBottomActions{
@@ -83,7 +83,7 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 .reviewTime{text-align:center;font-size:25px;font-weight:900;font-variant-numeric:tabular-nums;min-width:0}
 .playBtn,.pauseBtn{min-height:42px;padding:7px;font-size:18px;border-radius:10px;touch-action:manipulation}
 .playBtn{background:var(--green);color:#022016}.pauseBtn{background:#173247;color:#fff}
-.slider{display:grid;grid-template-columns:30px 1fr 22px;gap:5px;align-items:center}
+.slider{display:grid;grid-template-columns:30px 1fr 22px;gap:5px;align-items:center}.seekTools{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.seekTools button{min-height:35px;font-size:11px;background:#173247;color:white}#scrubber{height:26px;accent-color:var(--cyan)}
 .slider .small{font-size:9px}
 input[type=range]{width:100%;margin:0;touch-action:pan-x}
 #prevFrame,#markFinish,#nextFrame{min-height:44px;padding:7px 4px;font-size:12px;touch-action:manipulation}
@@ -132,7 +132,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
   #heatContext{padding:3px 7px;font-size:10px}
   .controls,.review{padding:5px 7px calc(5px + env(safe-area-inset-bottom));gap:4px}
   .primary,.record,.dark,.orange,.cameraBtn{min-height:38px;padding:7px 5px}
-  #timer{font-size:23px}.timerbox{bottom:7px;padding:4px 8px}
+  #timer{font-size:23px}.timerbox{top:7px;bottom:auto;padding:4px 8px}
   .playbackRow{grid-template-columns:46px 1fr 46px;gap:5px}.playBtn,.pauseBtn{min-height:38px}
   .reviewTime{font-size:22px}
   #prevFrame,#markFinish,#nextFrame{min-height:40px;font-size:11px}
@@ -158,8 +158,8 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
   <div class="reviewTime" id="reviewTime">00:00.000</div>
   <button id="pauseVideoBtn" class="pauseBtn" type="button" aria-label="Pause video">⏸</button>
 </div>
-<div class="slider"><span class="small">Inicio</span><input id="scrubber" type="range" min="0" max="1000" value="0"><span class="small">Fin</span></div>
-<div class="row3"><button class="dark" id="prevFrame">◀ FRAME</button><button class="orange" id="markFinish">MARK FINISH</button><button class="dark" id="nextFrame">FRAME ▶</button></div>
+<div class="slider"><span class="small">Inicio</span><input id="scrubber" type="range" min="0" max="10000" step="1" value="0"><span class="small">Fin</span></div>
+<div class="seekTools"><button id="seekBack10">◀ 10 s</button><button id="seekBack1">◀ 1 s</button><button id="seekForward1">1 s ▶</button><button id="seekForward10">10 s ▶</button></div><div class="row3"><button class="dark" id="prevFrame">◀ FRAME</button><button class="orange" id="markFinish">MARK FINISH</button><button class="dark" id="nextFrame">FRAME ▶</button></div>
 
 <div class="marks" id="marks"></div><button id="saveResultsBtn" class="saveResults">SAVE RESULTS</button>
 <div class="reviewBottomActions">
@@ -224,7 +224,7 @@ const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),s
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn'),reviewBackBtn=$('reviewBackBtn'),liveCameraBtn=$('liveCameraBtn');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
+let recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
 const pendingStoreKey='ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown'));
 let saveInProgress=false;
@@ -309,6 +309,7 @@ function releaseReviewMediaForSave(){
     videoUrl=null;
   }
   chunks=[];
+  recordingBlob=null;
   suspendLiveCamera();
 }
 
@@ -500,9 +501,11 @@ recordBtn.addEventListener('click',()=>{
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{
     const blob=new Blob(chunks,{type:recorder.mimeType||type||'video/webm'});
+    if(!blob.size){status.textContent='Grabación vacía. Vuelve a intentar.';recorder=null;return;}
+    recordingBlob=blob;
     chunks=[];
     if(videoUrl)URL.revokeObjectURL(videoUrl);
-    videoUrl=URL.createObjectURL(blob);
+    videoUrl=URL.createObjectURL(recordingBlob);
     resetReviewOrientation();
     reviewVideo.src=videoUrl;
     reviewVideo.load();
@@ -517,18 +520,37 @@ stopBtn.addEventListener('click',()=>{
   if(recorder&&recorder.state!=='inactive')recorder.stop();
   raceRunning=false;cancelAnimationFrame(raf);stopBtn.disabled=true;recordBtn.disabled=true;fpsSelect.disabled=false;mode.textContent='Carrera detenida';
 });
-reviewBtn.addEventListener('click',()=>{
-  if(!videoUrl)return;
-  suspendLiveCamera();
-  camera.style.display='none';
-  reviewVideo.style.display='block';
-  reviewPanel.classList.add('show');
-  document.querySelector('.app').classList.add('reviewMode');
-  reviewVideo.currentTime=0;
-  scrubber.value=0;
-  applyReviewOrientation();
-  updateReview();
-  mode.textContent='REVIEW';
+reviewBtn.addEventListener('click',async()=>{
+  if(reviewOpening||(!videoUrl&&!recordingBlob))return;
+  reviewOpening=true;reviewBtn.disabled=true;
+  try{
+    if(!videoUrl&&recordingBlob)videoUrl=URL.createObjectURL(recordingBlob);
+    reviewVideo.pause();
+    if(reviewVideo.src!==videoUrl){reviewVideo.src=videoUrl;reviewVideo.load();}
+    camera.style.display='none';reviewVideo.style.display='block';
+    reviewPanel.classList.add('show');
+    document.querySelector('.app').classList.add('reviewMode');
+    if(reviewVideo.readyState<1){
+      await Promise.race([
+        new Promise((resolve,reject)=>{
+          const cleanup=()=>{reviewVideo.removeEventListener('loadedmetadata',ok);reviewVideo.removeEventListener('error',fail)};
+          const ok=()=>{cleanup();resolve()};
+          const fail=()=>{cleanup();reject(Error('Video no disponible'))};
+          reviewVideo.addEventListener('loadedmetadata',ok);
+          reviewVideo.addEventListener('error',fail);
+          if(reviewVideo.readyState>=1){cleanup();resolve()}
+        }),
+        new Promise((_,reject)=>setTimeout(()=>reject(Error('Tiempo de carga agotado')),12000))
+      ]);
+    }
+    reviewVideo.currentTime=0;scrubber.value=0;applyReviewOrientation();updateReview();
+    mode.textContent='REVIEW';
+    suspendLiveCamera();
+  }catch(err){
+    status.textContent='Review falló: '+(err.message||err)+' · Grabación conservada; vuelve a intentar.';
+    reviewPanel.classList.remove('show');document.querySelector('.app').classList.remove('reviewMode');
+    reviewVideo.style.display='none';camera.style.display='block';
+  }finally{reviewOpening=false;reviewBtn.disabled=false}
 });
 async function returnToLiveCamera(){
   if(stagedAssignments.size>0){
@@ -555,7 +577,7 @@ reviewBackBtn.addEventListener('click',()=>backBtn.click());
 function currentMs(){return recordRaceMs+(reviewVideo.currentTime*1000)}
 function updateReview(){
   const t=currentMs();reviewTime.textContent=fmt(t);timer.textContent=fmt(t);
-  if(reviewVideo.duration&&isFinite(reviewVideo.duration))scrubber.value=Math.round(reviewVideo.currentTime/reviewVideo.duration*1000);
+  if(reviewVideo.duration&&isFinite(reviewVideo.duration))scrubber.value=Math.round(reviewVideo.currentTime/reviewVideo.duration*10000);
 }
 reviewVideo.addEventListener('timeupdate',updateReview);reviewVideo.addEventListener('seeked',updateReview);reviewVideo.addEventListener('loadedmetadata',()=>{applyReviewOrientation();updateReview();});
 playVideoBtn.addEventListener('click',async()=>{
@@ -578,7 +600,12 @@ if(screen.orientation&&screen.orientation.addEventListener){
   screen.orientation.addEventListener('change',()=>{if(reviewPanel.classList.contains('show'))applyReviewOrientation()});
 }
 
-scrubber.addEventListener('input',()=>{if(reviewVideo.duration&&isFinite(reviewVideo.duration)){reviewVideo.pause();reviewVideo.currentTime=Number(scrubber.value)/1000*reviewVideo.duration}});
+scrubber.addEventListener('input',()=>{if(reviewVideo.duration&&isFinite(reviewVideo.duration)){reviewVideo.pause();reviewVideo.currentTime=Number(scrubber.value)/10000*reviewVideo.duration}});
+function jump(seconds){
+ if(!Number.isFinite(reviewVideo.duration)||reviewVideo.duration<=0)return;
+ reviewVideo.pause();reviewVideo.currentTime=Math.max(0,Math.min(reviewVideo.duration,reviewVideo.currentTime+seconds));updateReview();
+}
+[['seekBack10',-10],['seekBack1',-1],['seekForward1',1],['seekForward10',10]].forEach(([id,seconds])=>$(id).addEventListener('click',()=>jump(seconds)));
 function step(dir){reviewVideo.pause();const fps=Math.max(1,actualFps||Number(fpsSelect.value)||60);reviewVideo.currentTime=Math.min(Math.max(0,reviewVideo.currentTime+dir/fps),reviewVideo.duration||Infinity)}
 prevFrame.addEventListener('click',()=>step(-1));
 nextFrame.addEventListener('click',()=>step(1));
@@ -597,7 +624,7 @@ async function loadHeat(){
       let teams=[];if(teamIds.length){const q=await sb.from('athletics_relay_teams').select('*').in('id',teamIds);if(q.error)throw q.error;teams=q.data||[]}
       heatEntries=(rows||[]).map((en,i)=>({...en,displayOrder:i+1,relayColor:(teams.find(t=>t.id===en.relay_team_id)||{}).color||''}));
       restorePendingAssignments();
-      heatContext.innerHTML='<span class="heatTitle">'+esc(ev.name)+' · FINAL</span><span class="heatCount">'+heatEntries.length+' relay teams</span>';heatContext.classList.add('show');
+      heatContext.innerHTML='<span class="heatTitle">'+esc(ev.category)+' '+(ev.gender==='F'?'GIRLS':'BOYS')+' · '+esc(ev.name)+' · FINAL</span><span class="heatCount">'+heatEntries.length+' relay teams</span>';heatContext.classList.add('show');
       renderLanes();return;
     }
     if(!heatId)return;
@@ -610,7 +637,7 @@ async function loadHeat(){
     let athletes=[];if(athleteIds.length){const q=await sb.from('athletics_athletes').select('*').in('id',athleteIds);if(q.error)throw q.error;athletes=q.data||[]}
     heatEntries=(entries||[]).map((en,i)=>{const reg=regs.find(r=>r.id===en.registration_id);const athlete=reg?athletes.find(a=>a.id===reg.athlete_id):null;return {...en,displayOrder:i+1,athlete,registration:reg||null}});
     restorePendingAssignments();
-    heatContext.innerHTML='<span class="heatTitle">'+esc(ev.name)+' · Heat '+esc(h.heat_number)+'</span><span class="heatCount">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
+    heatContext.innerHTML='<span class="heatTitle">'+esc(ev.category)+' '+(ev.gender==='F'?'GIRLS':'BOYS')+' · '+esc(ev.name)+' · Heat '+esc(h.heat_number)+'</span><span class="heatCount">'+heatEntries.length+' athletes</span>';heatContext.classList.add('show');
     renderLanes();
   }catch(err){heatContext.innerHTML='<span style="color:#ff9f1c">Load error: '+esc(err.message||err)+'</span>';heatContext.classList.add('show')}
 }
