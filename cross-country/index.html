@@ -418,7 +418,7 @@ boot().catch(e=>alert(e.message||String(e)));
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
     if(refreshing)return;
     refreshing=true;
-    location.reload();
+    /* Version gate handles any reload after confirming it is safe. */
   });
   async function check(){
     try{
@@ -432,6 +432,6 @@ boot().catch(e=>alert(e.message||String(e)));
 })();
 </script>
 
-<script src="../app-updater.js?v=30" data-build="30"></script>
+<script src="../app-updater.js?v=31" data-build="31"></script>
 </body>
 </html>
