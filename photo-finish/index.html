@@ -228,7 +228,7 @@ const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubb
 const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras'),downloadVideoBtn=$('downloadVideoBtn');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
+let exportInProgress=false,clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),demoMode=params.get('demo')==='1',heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
 const preferredCameraKey='ff-photo-camera-device';
 const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -523,24 +523,133 @@ function bestMime(){
 }
 function updateDownloadButton(){
   const available=!!(recordingBlob&&recordingBlob.size);
-  downloadVideoBtn.disabled=!available;
+  downloadVideoBtn.disabled=!available||exportInProgress;
   const mp4=available&&recordingBlob.type.toLowerCase().includes('mp4');
-  downloadVideoBtn.textContent=mp4?'DOWNLOAD MP4':'DOWNLOAD WEBM';
-  downloadVideoBtn.title=mp4?'Guardar video MP4 en este dispositivo':'Este navegador genera WebM; descargar el original sin cambiar su formato.';
+  downloadVideoBtn.textContent=exportInProgress?'EXPORTING…':(mp4?'DOWNLOAD MP4':'DOWNLOAD WEBM');
+  downloadVideoBtn.title=mp4?'Exportar MP4 con línea de meta y cronómetro':'Exportar WebM con línea de meta y cronómetro (MP4 no admitido).';
 }
-downloadVideoBtn.addEventListener('click',()=>{
-  if(!recordingBlob?.size){status.textContent='No hay video para descargar.';return}
-  const mp4=recordingBlob.type.toLowerCase().includes('mp4');
+function startLocalDownload(blob,ref){
+  const mp4=blob.type.toLowerCase().includes('mp4');
   const ext=mp4?'mp4':'webm';
-  const ref=(demoMode?'DEMO':(heatId||eventId||'HEAT')).replace(/[^a-z0-9_-]/gi,'_').slice(0,35);
+  const id=(demoMode?'DEMO':(heatId||eventId||'HEAT')).replace(/[^a-z0-9_-]/gi,'_').slice(0,35);
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-  const url=URL.createObjectURL(recordingBlob);
+  const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FieldFlow_PhotoFinish_'+ref+'_'+stamp+'.'+ext;
+  a.href=url;a.download='FieldFlow_PhotoFinish_'+id+'_META_TIMER_'+stamp+'.'+ext;
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
-  status.textContent=mp4?'Descarga MP4 solicitada. Revisa Descargas.':'Tu navegador no graba MP4 directamente. Se solicitó descargar el WebM original.';
-});
+  status.textContent='Descarga '+ext.toUpperCase()+' con META + TIMER solicitada. Revisa Descargas.';
+}
+function paintExportFrame(ctx,v,canvas,sec){
+  const w=canvas.width,h=canvas.height;
+  ctx.fillStyle='#000';ctx.fillRect(0,0,w,h);
+  if(v.readyState>=2){
+    // Same centered, cover-cropped framing used by Photo Finish on screen.
+    const vw=v.videoWidth||w,vh=v.videoHeight||h;
+    const scale=Math.max(w/vw,h/vh);
+    const dw=vw*scale,dh=vh*scale;
+    ctx.drawImage(v,(w-dw)/2,(h-dh)/2,dw,dh);
+  }
+  const lineWidth=Math.max(3,Math.round(w/380));
+  ctx.fillStyle='#ff4d4d';
+  ctx.shadowColor='#ff4d4d';ctx.shadowBlur=Math.round(w/90);
+  ctx.fillRect(Math.floor(w/2-lineWidth/2),0,lineWidth,h);
+  ctx.shadowBlur=0;
+  const font=Math.max(16,Math.round(w*.018));
+  const labelX=w/2+lineWidth+Math.max(6,Math.round(w*.007));
+  ctx.font='bold '+font+'px Arial, sans-serif';
+  ctx.fillStyle='#b92a2a';
+  ctx.fillRect(labelX,Math.round(h*.025),font*3.7,font*1.65);
+  ctx.fillStyle='white';
+  ctx.fillText('META',labelX+font*.4,Math.round(h*.025)+font*1.23);
+  const timerValue=fmt(recordRaceMs+sec*1000);
+  const timerFont=Math.max(20,Math.round(w*.034));
+  ctx.font='bold '+timerFont+'px Arial, sans-serif';
+  const width=ctx.measureText(timerValue).width+timerFont*1.15;
+  const left=(w-width)/2,top=Math.max(8,Math.round(h*.016));
+  ctx.fillStyle='rgba(0,0,0,.8)';
+  ctx.fillRect(left,top,width,timerFont*1.65);
+  ctx.fillStyle='#ffffff';
+  ctx.textAlign='center';
+  ctx.fillText(timerValue,w/2,top+timerFont*1.16);
+  ctx.textAlign='start';
+}
+async function exportOverlayVideo(){
+  if(exportInProgress||!recordingBlob?.size)return;
+  if(!window.MediaRecorder||!HTMLCanvasElement.prototype.captureStream){
+    status.textContent='Tu navegador no permite exportar video con superposiciones. El video original sigue disponible en Review.';
+    return;
+  }
+  exportInProgress=true;updateDownloadButton();
+  status.textContent='Preparando exportación con línea META y cronómetro…';
+  let v=null,sourceUrl=null,canvasStream=null,rafId=0,watchdog=0,rec=null,finished=false;
+  try{
+    v=document.createElement('video');
+    v.muted=true;v.playsInline=true;v.preload='auto';
+    sourceUrl=URL.createObjectURL(recordingBlob);v.src=sourceUrl;
+    await Promise.race([
+      new Promise((resolve,reject)=>{
+        v.addEventListener('loadeddata',resolve,{once:true});
+        v.addEventListener('error',()=>reject(Error('El video grabado no se pudo abrir')),{once:true});
+        v.load();
+      }),
+      new Promise((_,reject)=>setTimeout(()=>reject(Error('Se agotó el tiempo de carga del video')),15000))
+    ]);
+    const canvas=document.createElement('canvas');
+    const vw=v.videoWidth||1280,vh=v.videoHeight||720;
+    const factor=Math.min(1,1920/vw,1080/vh);
+    canvas.width=Math.max(320,Math.round(vw*factor));
+    canvas.height=Math.max(180,Math.round(vh*factor));
+    const ctx=canvas.getContext('2d',{alpha:false});
+    if(!ctx)throw Error('No hay canvas 2D disponible');
+    paintExportFrame(ctx,v,canvas,0);
+    canvasStream=canvas.captureStream(Math.min(60,Math.max(25,actualFps||30)));
+    const type=bestMime();
+    try{rec=new MediaRecorder(canvasStream,type?{mimeType:type,videoBitsPerSecond:Math.min(targetVideoBitrate,9000000)}:{videoBitsPerSecond:6000000})}
+    catch(_){rec=new MediaRecorder(canvasStream)}
+    const pieces=[];
+    const completed=new Promise((resolve,reject)=>{
+      rec.ondataavailable=e=>{if(e.data?.size)pieces.push(e.data)};
+      rec.onerror=e=>reject(Error(e.error?.message||'Falló la exportación'));
+      rec.onstop=()=>{
+        const blob=new Blob(pieces,{type:rec.mimeType||type||'video/webm'});
+        if(blob.size)resolve(blob);else reject(Error('La exportación quedó vacía'));
+      };
+    });
+    const render=()=>{
+      if(finished)return;
+      paintExportFrame(ctx,v,canvas,Number.isFinite(v.currentTime)?v.currentTime:0);
+      rafId=requestAnimationFrame(render);
+    };
+    v.currentTime=0;
+    rec.start(500);
+    render();
+    v.addEventListener('ended',()=>{finished=true;if(rec.state!=='inactive')rec.stop()},{once:true});
+    // Browser-specific duration=Infinity can prevent ended; retain a bounded fallback.
+    watchdog=setTimeout(()=>{
+      if(finished)return;
+      finished=true;
+      if(rec.state!=='inactive')rec.stop();
+    },Math.max(15000,(clipDurationSec+12)*1000));
+    await v.play();
+    status.textContent='Exportando video con META + TIMER en tiempo real. Mantén esta pantalla abierta.';
+    const blob=await completed;
+    startLocalDownload(blob);
+  }catch(err){
+    status.textContent='No se pudo exportar el video: '+(err.message||err)+'. La grabación original permanece disponible en Review.';
+    console.error('Photo Finish overlay export',err);
+  }finally{
+    finished=true;
+    clearTimeout(watchdog);cancelAnimationFrame(rafId);
+    try{v?.pause()}catch(_){}
+    try{if(rec?.state==='recording')rec.stop()}catch(_){}
+    try{canvasStream?.getTracks().forEach(t=>t.stop())}catch(_){}
+    if(sourceUrl)URL.revokeObjectURL(sourceUrl);
+    exportInProgress=false;updateDownloadButton();
+  }
+}
+downloadVideoBtn.addEventListener('click',exportOverlayVideo);
+
 recordBtn.addEventListener('click',()=>{
   if(!stream||!raceRunning)return;
   resetReviewOrientation();
@@ -901,6 +1010,7 @@ saveResultsBtn.addEventListener('click',async()=>{
 function renderMarks(){marksEl.innerHTML=marks.slice().sort((a,b)=>a.time-b.time).map((m,i)=>'<div class="markRow"><span>'+(m.lane!=null?'Lane '+m.lane:'Runner '+(i+1))+'</span><strong>'+fmt(m.time)+'</strong></div>').join('')}
 
 function closeCameraAndBack(){
+  if(exportInProgress){status.textContent='Espera a que finalice DOWNLOAD VIDEO.';return;}
   if(saveInProgress){
     status.textContent='Espera a que termine SAVE RESULTS.';
     return;
@@ -954,7 +1064,7 @@ backBtn.addEventListener('click',closeCameraAndBack);
 window.addEventListener('beforeunload',e=>{
   const recordingActive=raceRunning||(recorder&&recorder.state==='recording');
   const unsaved=stagedAssignments.size>0;
-  if(recordingActive||unsaved||saveInProgress){
+  if(recordingActive||unsaved||saveInProgress||exportInProgress){
     e.preventDefault();
     e.returnValue='';
   }
