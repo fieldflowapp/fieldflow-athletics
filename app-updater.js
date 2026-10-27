@@ -43,8 +43,9 @@
  function clear(){const el=document.getElementById(key);if(el)el.remove()}
  function display(){
   if(!safe()){
-   if(needsUpdate)show('Actualización pendiente','Hay una versión oficial más nueva. Termina la operación actual y guarda tus resultados antes de actualizar.','Esperando finalización',true);
-   else clear();
+   // Never cover Review, recording, unsaved marks or downloads with a modal:
+   // the athlete operator must be able to finish and protect results first.
+   clear();
    return;
   }
   if(needsUpdate)show('Actualización obligatoria',lastMessage||'Esta versión ya no permite continuar.','Actualizar ahora',false);
