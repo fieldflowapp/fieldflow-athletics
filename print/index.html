@@ -14,7 +14,7 @@ body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background
 .bar button{background:var(--navy);color:white;font-weight:700;cursor:pointer}
 .bar .spacer{flex:1}
 .field-table{table-layout:auto}.field-table th,.field-table td{padding:5px 4px}.field-table .attempt-col{min-width:42px}
-.sheet{width:210mm;min-height:297mm;margin:10px auto 30px;background:white;padding:12mm;box-shadow:0 8px 30px #0002}
+.event-page{break-after:page;page-break-after:always}.event-page:last-child{break-after:auto;page-break-after:auto}.report-banner{font-size:12px;margin:0 0 8px;color:#66727a}.sheet{width:210mm;min-height:297mm;margin:10px auto 30px;background:white;padding:12mm;box-shadow:0 8px 30px #0002}
 .head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:2px solid var(--navy);padding-bottom:8px}
 h1{font-size:22px;margin:0}.meta{font-size:12px;color:var(--muted);margin-top:4px}.record{font-size:12px;text-align:right}
 h2{font-size:14px;margin:18px 0 7px;text-transform:uppercase;letter-spacing:.05em}
@@ -54,8 +54,11 @@ th{background:#f2f5f7;font-size:10px;text-transform:uppercase}
 </div>
 <div id="main" class="hidden">
   <div class="bar">
+    <select id="categoryFilter" aria-label="Category"><option value="All">All categories</option></select>
+    <select id="genderFilter" aria-label="Gender"><option value="All">Boys &amp; Girls</option><option value="F">Girls</option><option value="M">Boys</option></select>
     <select id="eventSelect"></select>
-    <button id="loadBtn">Load</button>
+    <button id="loadBtn">Load event</button>
+    <button id="reportBtn">Full report</button>
     <div class="spacer"></div>
     <button onclick="window.print()">Print / Save PDF</button>
   </div>
@@ -90,15 +93,37 @@ function eventTitle(e){return e.category+' · '+gender(e.gender)+' · '+e.name;}
 function fieldMark(v){return v==null||v===''?'—':Number(v).toFixed(2)+' m';}
 function fieldStatus(x){if(!x)return '—';if(x.status==='valid')return fieldMark(x.mark_m);return ({foul:'X',pass:'–',pending:'—'})[x.status]||x.status||'—';}
 function hjResult(x){return ({clear:'O',miss:'X',pass:'–'})[x?.result]||'—';}
+let allEvents=[];
+function filteredEvents(){return allEvents.filter(e=>($('categoryFilter').value==='All'||e.category===$('categoryFilter').value)&&($('genderFilter').value==='All'||e.gender===$('genderFilter').value));}
+function filterEvents(){let events=filteredEvents();$('eventSelect').innerHTML=events.map(e=>'<option value="'+esc(e.id)+'">'+esc(eventTitle(e))+'</option>').join('');}
+async function buildFullReport(){
+  const events=filteredEvents();if(!events.length){$('sheet').innerHTML='<div class="empty">No events for these filters.</div>';return;}
+  const btn=$('reportBtn'),load=$('loadBtn');btn.disabled=true;load.disabled=true;
+  const pages=[];let failures=0;
+  for(let i=0;i<events.length;i++){
+    $('sheet').innerHTML='<div class="empty">Building report '+(i+1)+' / '+events.length+' · '+esc(eventTitle(events[i]))+'</div>';
+    try{
+      await loadEvent(events[i].id);
+      const html=$('sheet').innerHTML;
+      if(html.includes('class="empty">')&&!html.includes('class="head"'))failures++;
+      pages.push('<section class="event-page">'+html+'</section>');
+    }catch(err){failures++;pages.push('<section class="event-page"><h2>'+esc(eventTitle(events[i]))+'</h2><p>Unable to load: '+esc(err.message)+'</p></section>');}
+  }
+  $('sheet').innerHTML='<div class="report-banner">Official competition report · '+events.length+' events · '+new Date().toLocaleString()+(failures?' · '+failures+' require review':'')+'</div>'+pages.join('');
+  btn.disabled=false;load.disabled=false;
+}
 async function init(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){$('login').classList.remove('hidden');return}
   $('main').classList.remove('hidden');
   const {data:events,error}=await sb.from('athletics_events').select('*').eq('tournament_id',TOURNAMENT_ID).in('discipline',['track','relay','field']).order('category').order('gender').order('sort_order');
   if(error){$('sheet').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
-  $('eventSelect').innerHTML=(events||[]).map(e=>'<option value="'+e.id+'">'+esc(eventTitle(e))+'</option>').join('');
+  allEvents=events||[];
+  $('categoryFilter').innerHTML='<option value="All">All categories</option>'+[...new Set(allEvents.map(e=>e.category))].sort((a,b)=>({Y5:5,Y6:6,Y7:7,Y8:8,Intermediate:9,Senior:10}[a]||99)-({Y5:5,Y6:6,Y7:7,Y8:8,Intermediate:9,Senior:10}[b]||99)).map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
+  $('categoryFilter').onchange=filterEvents;$('genderFilter').onchange=filterEvents;filterEvents();
+  $('reportBtn').onclick=buildFullReport;
   const q=new URLSearchParams(location.search).get('event');
-  if(q && (events||[]).some(e=>e.id===q)) $('eventSelect').value=q;
+  if(q && allEvents.some(e=>e.id===q)){const ev=allEvents.find(e=>e.id===q);$('categoryFilter').value=ev.category;$('genderFilter').value=ev.gender;filterEvents();$('eventSelect').value=q;}
   $('loadBtn').onclick=()=>{history.replaceState(null,'','?event='+encodeURIComponent($('eventSelect').value));loadEvent($('eventSelect').value)};
   if($('eventSelect').value) loadEvent($('eventSelect').value);
 }
