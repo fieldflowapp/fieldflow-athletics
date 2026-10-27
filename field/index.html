@@ -372,18 +372,45 @@ function renderRegistrations(){
   if(search)search.oninput=()=>{const q=search.value.trim().toLowerCase();document.querySelectorAll('#registrationsPane [data-student-search]').forEach(row=>row.classList.toggle('hidden',q&&!row.dataset.studentSearch.includes(q)))};
 }
 async function saveRegistrations(){
-  const selected=[...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id),existing=new Map(state.registrations.map(r=>[r.athlete_id,r]));
-  const colour=$('colour').value,visibleIds=new Set((colour==='All'?state.athletes:state.athletes.filter(a=>a.color===colour)).filter(a=>a.gender===state.currentEvent.gender).map(a=>a.id));
-  const toAdd=selected.filter(id=>!existing.has(id)),toDel=state.registrations.filter(r=>visibleIds.has(r.athlete_id)&&!selected.includes(r.athlete_id)).map(r=>r.id);
-  for(const athlete_id of toAdd){
-    const {error}=await sb.from('athletics_registrations').insert({tournament_id:state.tournament.id,event_id:state.currentEvent.id,athlete_id,status:'registered'});
-    if(error){msg($('regMsg'),error.message,'bad');return}
+  const button=$('saveRegs'),event=state.currentEvent;
+  if(!event)return;
+  const selected=new Set([...document.querySelectorAll('.regcb:checked')].map(x=>x.dataset.id));
+  const existing=new Map(state.registrations.map(r=>[String(r.athlete_id),r]));
+  const colour=$('colour').value;
+  const visible=state.athletes.filter(a=>(colour==='All'||a.color===colour)&&a.gender===event.gender);
+  const add=visible.filter(a=>selected.has(String(a.id))&&existing.get(String(a.id))?.status!=='registered');
+  const remove=visible.filter(a=>!selected.has(String(a.id))&&existing.get(String(a.id))?.status==='registered');
+  if(button){button.disabled=true;button.textContent='Saving…'}
+  try{
+    // Upsert handles first-time registrations AND reactivating withdrawn/DNS
+    // registrations without duplicate-key errors or changing registration IDs.
+    for(const athlete of add){
+      const {data,error}=await sb.from('athletics_registrations').upsert({
+        tournament_id:state.tournament.id,event_id:event.id,
+        athlete_id:athlete.id,status:'registered'
+      },{onConflict:'event_id,athlete_id'}).select('id,athlete_id,status');
+      if(error)throw error;
+      if(!data?.some(r=>String(r.athlete_id)===String(athlete.id)&&r.status==='registered'))
+        throw Error('Registration could not be confirmed for '+athlete.last_name+', '+athlete.first_name);
+    }
+    // Withdrawal retains registration IDs and results for later correction.
+    for(const athlete of remove){
+      const reg=existing.get(String(athlete.id));
+      const {error}=await sb.from('athletics_registrations').update({status:'withdrawn'}).eq('id',reg.id);
+      if(error)throw error;
+    }
+    const {data:verified,error:verifyError}=await sb.from('athletics_registrations').select('athlete_id,status').eq('event_id',event.id);
+    if(verifyError)throw verifyError;
+    if(add.some(a=>!verified?.some(r=>String(r.athlete_id)===String(a.id)&&r.status==='registered')))
+      throw Error('One or more registrations were not saved.');
+    await reloadData();
+    msg($('regMsg'),add.length+' registered, '+remove.length+' withdrawn. Changes verified.','good');
+  }catch(error){
+    msg($('regMsg'),'SAVE FAILED — '+(error.message||String(error)),'bad');
+  }finally{
+    const current=$('saveRegs');
+    if(current){current.disabled=false;current.textContent='Save changes'}
   }
-  if(toDel.length){
-    const {error}=await sb.from('athletics_registrations').delete().in('id',toDel);
-    if(error){msg($('regMsg'),error.message,'bad');return}
-  }
-  await reloadData();msg($('regMsg'),'Registrations saved.','good');
 }
 function registeredRows(){
   return state.registrations.filter(r=>r.status==='registered').map(r=>({r,a:state.athletes.find(a=>a.id===r.athlete_id)})).filter(x=>x.a)
