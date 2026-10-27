@@ -54,8 +54,8 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 }
 .app.reviewMode .reviewBottomActions{
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
+  grid-template-columns:1fr 1fr 1.25fr;
+  gap:6px;
   position:fixed;
   left:8px;
   right:8px;
@@ -67,7 +67,7 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
   border-radius:12px;
   box-shadow:0 -8px 24px #0008;
 }
-.reviewBottomActions button{min-height:46px}
+.reviewBottomActions button{min-height:46px}.downloadVideo{background:#12c8ff;color:#001d2c;font-size:12px}.downloadVideo:disabled{opacity:.45}
 
 .row{display:grid;grid-template-columns:1fr 1fr;gap:6px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
 .primary,.record,.dark,.orange,.cameraBtn{min-height:42px;padding:9px 7px;font-size:13px}
@@ -166,6 +166,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
 <div class="reviewBottomActions">
   <button id="reviewBackBtn" class="dark" type="button">← BACK</button>
   <button id="liveCameraBtn" class="dark" type="button">LIVE CAMERA</button>
+  <button id="downloadVideoBtn" class="downloadVideo" type="button" disabled>DOWNLOAD MP4</button>
 </div>
 </section>
 
@@ -224,7 +225,7 @@ const $=id=>document.getElementById(id);
 const camera=$('camera'),reviewVideo=$('reviewVideo'),timer=$('timer'),mode=$('mode'),status=$('status');
 const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),stopBtn=$('stopBtn'),reviewBtn=$('reviewBtn'),backBtn=$('backBtn'),qualityBadge=$('qualityBadge'),fpsSelect=$('fpsSelect');
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn'),reviewBackBtn=$('reviewBackBtn'),liveCameraBtn=$('liveCameraBtn');
-const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras');
+const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras'),downloadVideoBtn=$('downloadVideoBtn');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
 let clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
@@ -339,6 +340,7 @@ function releaseReviewMediaForSave(){
   }
   chunks=[];
   recordingBlob=null;
+  downloadVideoBtn.disabled=true;
   clipDurationSec=0;
   suspendLiveCamera();
 }
@@ -513,9 +515,32 @@ function applyReviewOrientation(){
 
 function bestMime(){
   if(!window.MediaRecorder)return '';
-  for(const t of ['video/webm;codecs=vp8','video/webm','video/mp4'])if(MediaRecorder.isTypeSupported(t))return t;
+  // Prefer true MP4. Other browsers keep native WebM without renaming it.
+  for(const t of ['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp8','video/webm']){
+    if(MediaRecorder.isTypeSupported(t))return t;
+  }
   return '';
 }
+function updateDownloadButton(){
+  const available=!!(recordingBlob&&recordingBlob.size);
+  downloadVideoBtn.disabled=!available;
+  const mp4=available&&recordingBlob.type.toLowerCase().includes('mp4');
+  downloadVideoBtn.textContent=mp4?'DOWNLOAD MP4':'DOWNLOAD WEBM';
+  downloadVideoBtn.title=mp4?'Guardar video MP4 en este dispositivo':'Este navegador genera WebM; descargar el original sin cambiar su formato.';
+}
+downloadVideoBtn.addEventListener('click',()=>{
+  if(!recordingBlob?.size){status.textContent='No hay video para descargar.';return}
+  const mp4=recordingBlob.type.toLowerCase().includes('mp4');
+  const ext=mp4?'mp4':'webm';
+  const ref=(demoMode?'DEMO':(heatId||eventId||'HEAT')).replace(/[^a-z0-9_-]/gi,'_').slice(0,35);
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const url=URL.createObjectURL(recordingBlob);
+  const a=document.createElement('a');
+  a.href=url;a.download='FieldFlow_PhotoFinish_'+ref+'_'+stamp+'.'+ext;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+  status.textContent=mp4?'Descarga MP4 solicitada. Revisa Descargas.':'Tu navegador no graba MP4 directamente. Se solicitó descargar el WebM original.';
+});
 recordBtn.addEventListener('click',()=>{
   if(!stream||!raceRunning)return;
   resetReviewOrientation();
@@ -523,13 +548,14 @@ recordBtn.addEventListener('click',()=>{
   captureVideoHeight=camera.videoHeight||((stream.getVideoTracks()[0]||{}).getSettings?.().height)||0;
   captureOrientationAngle=readOrientationAngle();
   chunks=[];const type=bestMime();
+  recordingBlob=null;updateDownloadButton();
   try{
     const opts={videoBitsPerSecond:targetVideoBitrate};
     if(type)opts.mimeType=type;
     recorder=new MediaRecorder(stream,opts);
   }catch(e){
     try{
-      recorder=type?new MediaRecorder(stream,{mimeType:type}):new MediaRecorder(stream);
+      recorder=new MediaRecorder(stream);
     }catch(e2){
       status.textContent='Error MediaRecorder: '+(e2.message||e.message);
       return;
@@ -542,6 +568,7 @@ recordBtn.addEventListener('click',()=>{
     const blob=new Blob(chunks,{type:recorder.mimeType||type||'video/webm'});
     if(!blob.size){status.textContent='Grabación vacía. Vuelve a intentar.';recorder=null;return;}
     recordingBlob=blob;
+    updateDownloadButton();
     if(!clipDurationSec)clipDurationSec=Math.max(.001,(performance.now()-clipRecordingStarted)/1000);
     chunks=[];
     if(videoUrl)URL.revokeObjectURL(videoUrl);
@@ -551,7 +578,7 @@ recordBtn.addEventListener('click',()=>{
     reviewVideo.load();
     reviewBtn.disabled=false;
     recorder=null;
-    status.textContent='Video listo para revisar';
+    status.textContent='Video listo para revisar'+(recordingBlob.type.includes('mp4')?' · MP4 disponible':' · WebM, sin MP4 nativo');
     mode.textContent='Grabación finalizada';
   };
   recorder.start(500);recordBtn.disabled=true;mode.textContent='● GRABANDO';
@@ -813,7 +840,7 @@ saveResultsBtn.addEventListener('click',async()=>{
 
   // Android can reclaim a PWA under memory pressure. The video is no longer
   // needed once all finish times have been assigned, so free it before network I/O.
-  releaseReviewMediaForSave();
+  // Keep the recording available for voluntary download after saving results.
   persistPendingAssignments();
 
   const pending=[...stagedAssignments.entries()].map(([entryId,sec])=>({entryId,sec:Number(sec)}));
