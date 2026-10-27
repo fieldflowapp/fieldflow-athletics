@@ -227,7 +227,7 @@ const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubb
 const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
+let clipRecordingStarted=0,clipDurationSec=0,seekRepairAttempted=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
 const preferredCameraKey='ff-photo-camera-device';
 const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -339,6 +339,7 @@ function releaseReviewMediaForSave(){
   }
   chunks=[];
   recordingBlob=null;
+  clipDurationSec=0;
   suspendLiveCamera();
 }
 
@@ -535,11 +536,13 @@ recordBtn.addEventListener('click',()=>{
     }
   }
   recordRaceMs=elapsed();
+  clipRecordingStarted=performance.now();clipDurationSec=0;seekRepairAttempted=false;
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{
     const blob=new Blob(chunks,{type:recorder.mimeType||type||'video/webm'});
     if(!blob.size){status.textContent='Grabación vacía. Vuelve a intentar.';recorder=null;return;}
     recordingBlob=blob;
+    if(!clipDurationSec)clipDurationSec=Math.max(.001,(performance.now()-clipRecordingStarted)/1000);
     chunks=[];
     if(videoUrl)URL.revokeObjectURL(videoUrl);
     videoUrl=URL.createObjectURL(recordingBlob);
@@ -554,7 +557,10 @@ recordBtn.addEventListener('click',()=>{
   recorder.start(500);recordBtn.disabled=true;mode.textContent='● GRABANDO';
 });
 stopBtn.addEventListener('click',()=>{
-  if(recorder&&recorder.state!=='inactive')recorder.stop();
+  if(recorder&&recorder.state!=='inactive'){
+    clipDurationSec=Math.max(.001,(performance.now()-clipRecordingStarted)/1000);
+    recorder.stop();
+  }
   raceRunning=false;cancelAnimationFrame(raf);stopBtn.disabled=true;recordBtn.disabled=true;fpsSelect.disabled=false;cameraSelect.disabled=false;mode.textContent='Carrera detenida';
 });
 reviewBtn.addEventListener('click',async()=>{
@@ -612,9 +618,17 @@ async function returnToLiveCamera(){
 liveCameraBtn.addEventListener('click',returnToLiveCamera);
 reviewBackBtn.addEventListener('click',()=>backBtn.click());
 function currentMs(){return recordRaceMs+(reviewVideo.currentTime*1000)}
+function reviewDuration(){
+  const d=reviewVideo.duration;
+  if(Number.isFinite(d)&&d>0)return d;
+  const ranges=reviewVideo.seekable;
+  if(ranges?.length){const end=ranges.end(ranges.length-1);if(Number.isFinite(end)&&end>0)return end}
+  return clipDurationSec>0?clipDurationSec:0;
+}
 function updateReview(){
   const t=currentMs();reviewTime.textContent=fmt(t);timer.textContent=fmt(t);
-  if(reviewVideo.duration&&isFinite(reviewVideo.duration))scrubber.value=Math.round(reviewVideo.currentTime/reviewVideo.duration*10000);
+  const d=reviewDuration();
+  if(d>0)scrubber.value=Math.round(Math.min(1,reviewVideo.currentTime/d)*10000);
 }
 reviewVideo.addEventListener('timeupdate',updateReview);reviewVideo.addEventListener('seeked',updateReview);reviewVideo.addEventListener('loadedmetadata',()=>{applyReviewOrientation();updateReview();});
 playVideoBtn.addEventListener('click',async()=>{
@@ -637,13 +651,42 @@ if(screen.orientation&&screen.orientation.addEventListener){
   screen.orientation.addEventListener('change',()=>{if(reviewPanel.classList.contains('show'))applyReviewOrientation()});
 }
 
-scrubber.addEventListener('input',()=>{if(reviewVideo.duration&&isFinite(reviewVideo.duration)){reviewVideo.pause();reviewVideo.currentTime=Number(scrubber.value)/10000*reviewVideo.duration}});
-function jump(seconds){
- if(!Number.isFinite(reviewVideo.duration)||reviewVideo.duration<=0)return;
- reviewVideo.pause();reviewVideo.currentTime=Math.max(0,Math.min(reviewVideo.duration,reviewVideo.currentTime+seconds));updateReview();
+// Chrome may expose MediaRecorder WebM duration as Infinity, causing the old
+// 1 s / 10 s controls to silently return. Try to resolve duration once before seeking.
+async function repairRecordedDuration(){
+ if(Number.isFinite(reviewVideo.duration)||seekRepairAttempted)return;
+ seekRepairAttempted=true;
+ const original=reviewVideo.currentTime||0;
+ try{
+  reviewVideo.currentTime=1e9;
+  await Promise.race([
+   new Promise(resolve=>reviewVideo.addEventListener('seeked',resolve,{once:true})),
+   new Promise(resolve=>setTimeout(resolve,700))
+  ]);
+  if(Number.isFinite(reviewVideo.duration)&&reviewVideo.duration>0)clipDurationSec=reviewVideo.duration;
+ }catch(e){console.warn('Duration repair not supported',e)}
+ finally{try{reviewVideo.currentTime=Math.min(original,reviewDuration()||original)}catch(_){}}
 }
+async function seekTo(seconds){
+ const duration=reviewDuration();
+ if(!duration){status.textContent='Todavía no se puede navegar: video sin duración detectada.';return}
+ reviewVideo.pause();
+ await repairRecordedDuration();
+ const limit=reviewDuration()||duration;
+ const target=Math.min(Math.max(0,seconds),Math.max(0,limit-.001));
+ try{
+   reviewVideo.currentTime=target;
+   reviewTime.textContent=fmt(recordRaceMs+target*1000);
+   timer.textContent=fmt(recordRaceMs+target*1000);
+   scrubber.value=Math.round(target/limit*10000);
+   status.textContent='Navegación: '+target.toFixed(2)+' s del video';
+ }catch(err){status.textContent='No se pudo desplazar el video: '+(err.message||err)}
+}
+scrubber.addEventListener('input',()=>{void seekTo(Number(scrubber.value)/10000*reviewDuration())});
+function jump(seconds){void seekTo((reviewVideo.currentTime||0)+seconds)}
+
 [['seekBack10',-10],['seekBack1',-1],['seekForward1',1],['seekForward10',10]].forEach(([id,seconds])=>$(id).addEventListener('click',()=>jump(seconds)));
-function step(dir){reviewVideo.pause();const fps=Math.max(1,actualFps||Number(fpsSelect.value)||60);reviewVideo.currentTime=Math.min(Math.max(0,reviewVideo.currentTime+dir/fps),reviewVideo.duration||Infinity)}
+function step(dir){const fps=Math.max(1,actualFps||Number(fpsSelect.value)||60);void seekTo((reviewVideo.currentTime||0)+dir/fps)}
 prevFrame.addEventListener('click',()=>step(-1));
 nextFrame.addEventListener('click',()=>step(1));
 [prevFrame,nextFrame,markFinish,playVideoBtn,pauseVideoBtn].forEach(btn=>{
