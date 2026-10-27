@@ -148,7 +148,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
 <main>
 <section class="stage">
 <video id="camera" autoplay playsinline muted></video>
-<video id="reviewVideo" playsinline muted></video>
+<video id="reviewVideo" playsinline muted preload="auto"></video>
 <div class="finish-line"></div>
 <div class="timerbox"><div id="timer">00:00.000</div><div class="mode" id="mode">Preparando cámara…</div></div>
 </section>
@@ -227,7 +227,7 @@ const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubb
 const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras');
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
-let clipRecordingStarted=0,clipDurationSec=0,seekRepairAttempted=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
+let clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
 const preferredCameraKey='ff-photo-camera-device';
 const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
@@ -536,7 +536,7 @@ recordBtn.addEventListener('click',()=>{
     }
   }
   recordRaceMs=elapsed();
-  clipRecordingStarted=performance.now();clipDurationSec=0;seekRepairAttempted=false;
+  clipRecordingStarted=performance.now();clipDurationSec=0;requestedReviewSec=null;reviewSeekQueued=false;
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
   recorder.onstop=()=>{
     const blob=new Blob(chunks,{type:recorder.mimeType||type||'video/webm'});
@@ -586,7 +586,9 @@ reviewBtn.addEventListener('click',async()=>{
         new Promise((_,reject)=>setTimeout(()=>reject(Error('Tiempo de carga agotado')),12000))
       ]);
     }
-    reviewVideo.currentTime=0;scrubber.value=0;applyReviewOrientation();updateReview();
+    reviewVideo.currentTime=0;requestedReviewSec=0;scrubber.value=0;
+    reviewTime.textContent=fmt(recordRaceMs);timer.textContent=fmt(recordRaceMs);
+    applyReviewOrientation();updateReview();
     mode.textContent='REVIEW';
     suspendLiveCamera();
   }catch(err){
@@ -619,20 +621,46 @@ liveCameraBtn.addEventListener('click',returnToLiveCamera);
 reviewBackBtn.addEventListener('click',()=>backBtn.click());
 function currentMs(){return recordRaceMs+(reviewVideo.currentTime*1000)}
 function reviewDuration(){
+  // MediaRecorder WebM can report Infinity until playback; the measured capture
+  // duration is available immediately when STOP has completed.
   const d=reviewVideo.duration;
   if(Number.isFinite(d)&&d>0)return d;
   const ranges=reviewVideo.seekable;
-  if(ranges?.length){const end=ranges.end(ranges.length-1);if(Number.isFinite(end)&&end>0)return end}
+  if(ranges?.length){
+    const end=ranges.end(ranges.length-1);
+    if(Number.isFinite(end)&&end>0)return end;
+  }
   return clipDurationSec>0?clipDurationSec:0;
 }
-function updateReview(){
-  const t=currentMs();reviewTime.textContent=fmt(t);timer.textContent=fmt(t);
+function showReviewPosition(sec){
   const d=reviewDuration();
-  if(d>0)scrubber.value=Math.round(Math.min(1,reviewVideo.currentTime/d)*10000);
+  const time=Math.max(0,Math.min(sec,Math.max(0,d)));
+  reviewTime.textContent=fmt(recordRaceMs+time*1000);
+  timer.textContent=fmt(recordRaceMs+time*1000);
+  if(d>0)scrubber.value=Math.round(time/d*10000);
 }
-reviewVideo.addEventListener('timeupdate',updateReview);reviewVideo.addEventListener('seeked',updateReview);reviewVideo.addEventListener('loadedmetadata',()=>{applyReviewOrientation();updateReview();});
+function updateReview(){
+  if(requestedReviewSec!=null&&reviewVideo.seeking)return;
+  // Do not let an old timeupdate push the slider backwards during a seek.
+  if(requestedReviewSec!=null&&Math.abs(reviewVideo.currentTime-requestedReviewSec)>.12)return;
+  requestedReviewSec=null;
+  showReviewPosition(reviewVideo.currentTime||0);
+}
+reviewVideo.addEventListener('timeupdate',updateReview);
+reviewVideo.addEventListener('seeked',()=>{
+  reviewSeekQueued=false;
+  if(requestedReviewSec!=null&&Math.abs(reviewVideo.currentTime-requestedReviewSec)>.12){
+    const target=requestedReviewSec;
+    try{reviewVideo.currentTime=target}catch(err){status.textContent='No se pudo mover el video: '+err.message}
+  }else updateReview();
+});
+reviewVideo.addEventListener('loadedmetadata',()=>{applyReviewOrientation();if(reviewPanel.classList.contains('show'))showReviewPosition(requestedReviewSec??0)});
+reviewVideo.addEventListener('durationchange',()=>{
+  if(reviewPanel.classList.contains('show'))showReviewPosition(requestedReviewSec??reviewVideo.currentTime);
+});
 playVideoBtn.addEventListener('click',async()=>{
   try{
+    requestedReviewSec=null;
     await reviewVideo.play();
     mode.textContent='▶ PLAYING';
   }catch(err){
@@ -641,6 +669,7 @@ playVideoBtn.addEventListener('click',async()=>{
 });
 pauseVideoBtn.addEventListener('click',()=>{
   reviewVideo.pause();
+  requestedReviewSec=null;
   updateReview();
   mode.textContent='⏸ PAUSED';
 });
@@ -650,43 +679,31 @@ window.addEventListener('resize',()=>{if(reviewPanel.classList.contains('show'))
 if(screen.orientation&&screen.orientation.addEventListener){
   screen.orientation.addEventListener('change',()=>{if(reviewPanel.classList.contains('show'))applyReviewOrientation()});
 }
-
-// Chrome may expose MediaRecorder WebM duration as Infinity, causing the old
-// 1 s / 10 s controls to silently return. Try to resolve duration once before seeking.
-async function repairRecordedDuration(){
- if(Number.isFinite(reviewVideo.duration)||seekRepairAttempted)return;
- seekRepairAttempted=true;
- const original=reviewVideo.currentTime||0;
- try{
-  reviewVideo.currentTime=1e9;
-  await Promise.race([
-   new Promise(resolve=>reviewVideo.addEventListener('seeked',resolve,{once:true})),
-   new Promise(resolve=>setTimeout(resolve,700))
-  ]);
-  if(Number.isFinite(reviewVideo.duration)&&reviewVideo.duration>0)clipDurationSec=reviewVideo.duration;
- }catch(e){console.warn('Duration repair not supported',e)}
- finally{try{reviewVideo.currentTime=Math.min(original,reviewDuration()||original)}catch(_){}}
+function seekTo(seconds){
+  const d=reviewDuration();
+  if(!(d>0)){status.textContent='El video aún no tiene duración disponible.';return}
+  const target=Math.min(Math.max(0,Number(seconds)||0),Math.max(0,d-.001));
+  reviewVideo.pause();
+  requestedReviewSec=target;
+  showReviewPosition(target); // Slider and timestamp respond from the first click.
+  try{
+    if(reviewVideo.readyState<1){
+      status.textContent='Cargando video. Se aplicará la posición seleccionada.';
+      reviewVideo.addEventListener('loadedmetadata',()=>{if(requestedReviewSec!=null)seekTo(requestedReviewSec)},{once:true});
+      return;
+    }
+    reviewVideo.currentTime=target;
+    if(!reviewVideo.seeking&&Math.abs(reviewVideo.currentTime-target)>.15){
+      status.textContent='Esta grabación todavía no permite buscar esa posición. Intenta PLAY.';
+    }else{
+      status.textContent='Posición: '+target.toFixed(2)+' s del video';
+    }
+  }catch(err){status.textContent='Error al desplazarse: '+(err.message||err)}
 }
-async function seekTo(seconds){
- const duration=reviewDuration();
- if(!duration){status.textContent='Todavía no se puede navegar: video sin duración detectada.';return}
- reviewVideo.pause();
- await repairRecordedDuration();
- const limit=reviewDuration()||duration;
- const target=Math.min(Math.max(0,seconds),Math.max(0,limit-.001));
- try{
-   reviewVideo.currentTime=target;
-   reviewTime.textContent=fmt(recordRaceMs+target*1000);
-   timer.textContent=fmt(recordRaceMs+target*1000);
-   scrubber.value=Math.round(target/limit*10000);
-   status.textContent='Navegación: '+target.toFixed(2)+' s del video';
- }catch(err){status.textContent='No se pudo desplazar el video: '+(err.message||err)}
-}
-scrubber.addEventListener('input',()=>{void seekTo(Number(scrubber.value)/10000*reviewDuration())});
-function jump(seconds){void seekTo((reviewVideo.currentTime||0)+seconds)}
-
+scrubber.addEventListener('input',()=>{seekTo(Number(scrubber.value)/10000*reviewDuration())});
+function jump(seconds){seekTo((requestedReviewSec??reviewVideo.currentTime??0)+seconds)}
 [['seekBack10',-10],['seekBack1',-1],['seekForward1',1],['seekForward10',10]].forEach(([id,seconds])=>$(id).addEventListener('click',()=>jump(seconds)));
-function step(dir){const fps=Math.max(1,actualFps||Number(fpsSelect.value)||60);void seekTo((reviewVideo.currentTime||0)+dir/fps)}
+function step(dir){const fps=Math.max(1,actualFps||Number(fpsSelect.value)||60);seekTo((requestedReviewSec??reviewVideo.currentTime??0)+dir/fps)}
 prevFrame.addEventListener('click',()=>step(-1));
 nextFrame.addEventListener('click',()=>step(1));
 [prevFrame,nextFrame,markFinish,playVideoBtn,pauseVideoBtn].forEach(btn=>{
