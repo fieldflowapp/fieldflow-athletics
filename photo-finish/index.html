@@ -1061,6 +1061,16 @@ function closeCameraAndBack(){
 }
 backBtn.addEventListener('click',closeCameraAndBack);
 
+// Never force an upgrade while recording, exporting, or holding unsaved
+// finish times or a captured video that has not yet been released.
+window.ffCanUpdate=()=>!(
+ raceRunning||
+ (recorder&&recorder.state==='recording')||
+ saveInProgress||exportInProgress||
+ stagedAssignments.size>0||
+ !!recordingBlob||
+ reviewOpening
+);
 window.addEventListener('beforeunload',e=>{
   const recordingActive=raceRunning||(recorder&&recorder.state==='recording');
   const unsaved=stagedAssignments.size>0;
@@ -1087,5 +1097,6 @@ document.addEventListener('visibilitychange',()=>{
 })();
 });
 </script>
+<script src="../app-updater.js?v=31" data-build="31"></script>
 </body>
 </html>
