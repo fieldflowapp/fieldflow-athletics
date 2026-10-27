@@ -17,6 +17,7 @@ begin
  if girl is null or boy is null then raise exception 'Missing test athletes'; end if;
  insert into public.athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,gender)
  values(tid,eid,'ROLLBACK ONLY integration test',current_date,'All','All') returning id into sid;
+ perform public.athletics_save_class_attendance(sid,array[girl,boy]);
  perform public.athletics_save_class_marks(sid,1,jsonb_build_array(jsonb_build_object('athlete_id',girl,'mark',13.2,'status','valid'),jsonb_build_object('athlete_id',boy,'mark',12.8,'status','valid')));
  select count(*) into n from public.athletics_class_marks where session_id=sid;
  if n<>2 then raise exception 'Mixed-gender save failed'; end if;

@@ -1,6 +1,6 @@
 (function(root){
  'use strict';
- const eligible=(a,s)=>a.active&&(s.category==='All'||a.level===s.category)&&(s.gender==='All'||a.gender===s.gender);
+ const eligible=(a,s)=>a.active&&(Array.isArray(s.categories)?s.categories.includes(a.level):(s.category==='All'||a.level===s.category))&&(s.gender==='All'||a.gender===s.gender);
  function parseMark(value){if(String(value).trim()==='')return null;const n=Number(String(value).trim().replace(',','.'));if(!Number.isFinite(n)||n<=0||n>=1000000)throw Error('Marks must be positive numbers below 1,000,000. Enter time in seconds.');return n}
  const comparisonKey=r=>JSON.stringify([r.event_name,r.category,r.gender,r.conditions||'']);
  const better=(a,b)=>a.unit==='s'?Number(a.mark)<Number(b.mark):Number(a.mark)>Number(b.mark);

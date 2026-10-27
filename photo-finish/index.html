@@ -9,6 +9,7 @@
 <meta http-equiv="Expires" content="0">
 <title>FieldFlow Photo Finish V2</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./class-mode.js?v=33"></script>
 <style>
 :root{--navy:#061722;--navy2:#071d2d;--cyan:#12c8ff;--green:#18d39e;--orange:#ff9f1c;--red:#ff4d4d;--muted:#9fb0bf}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -229,7 +230,8 @@ const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCam
 const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
 let exportInProgress=false,clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
-const params=new URLSearchParams(location.search),demoMode=params.get('demo')==='1',heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),relayMode=params.get('relay')==='1';
+const params=new URLSearchParams(location.search),demoMode=params.get('demo')==='1',heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),classMode=params.has('classHeat'),classHeatId=params.get('classHeat'),relayMode=!classMode&&params.get('relay')==='1';
+let classSessionId=null;
 const preferredCameraKey='ff-photo-camera-device';
 const isDesktopCapture=window.matchMedia('(hover:hover) and (pointer:fine)').matches;
 let preferredCameraId=isDesktopCapture?(localStorage.getItem(preferredCameraKey)||''):'';
@@ -256,11 +258,12 @@ cameraSelect.addEventListener('change',async()=>{
  }catch(e){preferredCameraId=prev;status.textContent='Error al cambiar cámara: '+e.message;await openCamera()}
 });
 if(isDesktopCapture&&navigator.mediaDevices?.addEventListener)navigator.mediaDevices.addEventListener('devicechange',listCameras);
-const pendingStoreKey=demoMode?'ff-photo-pending-demo-v1':('ff-photo-pending-v1:'+(relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown')));
+const pendingStoreKey=demoMode?'ff-photo-pending-demo-v1':('ff-photo-pending-v1:'+(classMode?'class-heat:'+(classHeatId||'unknown'):relayMode?'relay:'+(eventId||'unknown'):'heat:'+(heatId||'unknown')));
 let saveInProgress=false;
 const SUPABASE_URL='https://qhsvvlcgwdmxxappplzh.supabase.co';
 const SUPABASE_KEY='sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO';
 const sb=(window.supabase&&window.supabase.createClient)?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+const classPhoto=classMode?window.ClassPhotoFinish.create(sb,classHeatId):null;
 
 const fmt=ms=>{ms=Math.max(0,ms||0);const m=Math.floor(ms/60000),s=Math.floor((ms%60000)/1000),x=Math.floor(ms%1000);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+String(x).padStart(3,'0')};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
@@ -531,7 +534,7 @@ function updateDownloadButton(){
 function startLocalDownload(blob,ref){
   const mp4=blob.type.toLowerCase().includes('mp4');
   const ext=mp4?'mp4':'webm';
-  const id=(demoMode?'DEMO':(heatId||eventId||'HEAT')).replace(/[^a-z0-9_-]/gi,'_').slice(0,35);
+  const id=(demoMode?'DEMO':(classHeatId||heatId||eventId||'HEAT')).replace(/[^a-z0-9_-]/gi,'_').slice(0,35);
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
@@ -858,6 +861,12 @@ async function loadHeat(){
   }
   if(!sb)return;
   try{
+    if(classMode){
+      const ctx=await classPhoto.load();classSessionId=ctx.session.id;heatEntries=ctx.entries;
+      restorePendingAssignments();
+      heatContext.innerHTML='<span class="heatTitle">CLASS · '+esc(ctx.session.title)+' · '+esc(ctx.event.name)+' · Round '+ctx.heat.round_no+' · Series '+ctx.heat.heat_number+' · '+(ctx.heat.gender==='All'?'MIXED':ctx.heat.gender==='F'?'FEMALE':'MALE')+'</span><span class="heatCount">'+heatEntries.length+' present athletes</span>';
+      heatContext.classList.add('show');renderLanes();return;
+    }
     if(relayMode){
       if(!eventId)return;
       const {data:ev,error:ee}=await sb.from('athletics_events').select('*').eq('id',eventId).single();if(ee)throw ee;
@@ -953,9 +962,12 @@ saveResultsBtn.addEventListener('click',async()=>{
   persistPendingAssignments();
 
   const pending=[...stagedAssignments.entries()].map(([entryId,sec])=>({entryId,sec:Number(sec)}));
-  const table=relayMode?'athletics_relay_results':'athletics_track_entries';
-
   try{
+    let verified;
+    if(classMode){
+      verified=await classPhoto.save(pending);
+    }else{
+    const table=relayMode?'athletics_relay_results':'athletics_track_entries';
     // Limit concurrent requests to avoid long sequential saves without flooding mobile radios.
     const concurrency=4;
     for(let i=0;i<pending.length;i+=concurrency){
@@ -972,10 +984,12 @@ saveResultsBtn.addEventListener('click',async()=>{
 
     // Verify every write before clearing the local recovery copy.
     const ids=pending.map(x=>x.entryId);
-    const {data:verified,error:verifyError}=await sb.from(table)
+    const {data:verifiedRows,error:verifyError}=await sb.from(table)
       .select('id,official_time,status')
       .in('id',ids);
     if(verifyError)throw verifyError;
+    verified=verifiedRows;
+    }
 
     const byId=new Map((verified||[]).map(x=>[String(x.id),x]));
     for(const item of pending){
@@ -1054,6 +1068,7 @@ function closeCameraAndBack(){
     return;
   }
 
+  if(classMode){location.replace('../craighouse/?session='+encodeURIComponent(classSessionId||'')+'#class');return;}
   const fallback=relayMode
     ? '../?event='+encodeURIComponent(eventId||'')
     : '../?event='+encodeURIComponent(eventId||'')+'&tab=results&heat='+encodeURIComponent(heatId||'')+(heatId?'#heat-'+encodeURIComponent(heatId):'');
@@ -1097,6 +1112,6 @@ document.addEventListener('visibilitychange',()=>{
 })();
 });
 </script>
-<script src="../app-updater.js?v=31" data-build="31"></script>
+<script src="../app-updater.js?v=33" data-build="33"></script>
 </body>
 </html>

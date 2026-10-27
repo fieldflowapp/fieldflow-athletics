@@ -16,9 +16,9 @@ Open `craighouse/` using an existing Athletics administrator account. All Gender
 the default for new sessions. Session/attempt/athlete identifies each result, so
 retrying a save updates that result while the next attempt retains previous marks.
 Saves are atomic and verified with a subsequent read. Blank new rows are ignored.
-The first version uses manual entry; Photo Finish continues to serve official heats.
+Track class sessions now connect each heat to Photo Finish. Select multiple categories, save present students, then generate mixed or gender-separated series. New rounds append results without overwriting earlier rounds. Relays require Male or Female and record a team time by colour for each present member, explicitly labelled as a team result.
 
-`database/craighouse-class-mode.sql` documents the additive production migration.
+`database/craighouse-class-mode.sql` and `database/craighouse-sessions-v2.sql` document the additive production migrations.
 Class data uses separate RLS-protected tables. The history view reads official
 track, field, high jump and relay results live without copying or modifying them.
 Relay history is explicitly a team time. Dates use scheduled heat dates when
@@ -27,7 +27,7 @@ and equipment/conditions; database bests do not certify school records.
 
 Validation: `node --test tests/class-logic.test.cjs`; browser suite
 `node tests/class-browser.cjs` with Playwright installed; rollback-only database
-checks in `tests/class-database.sql`. The deployment workflow runs desktop/mobile
+checks in `tests/class-database.sql` and `tests/class-v2-database.sql`. The deployment workflow runs desktop/mobile
 browser tests before publishing.
 
 ## Architecture
