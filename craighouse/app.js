@@ -33,7 +33,8 @@ async function openSession(s){
  const marks=await allRows(()=>sb.from('athletics_class_marks').select('*').eq('session_id',s.id).order('attempt_no').order('id'));
  S.session=s;S.marks=marks;S.attempt=1;S.draft.clear();S.dirty=false;$('attempt').value=1;$('sessionPicker').value=s.id;
  const event=S.events.find(e=>e.id===s.template_event_id);$('sessionSummary').innerHTML=`<h2>${esc(s.title)}</h2><p>${esc(s.session_date)} · ${esc(event.name)} · ${esc(s.category)} · <b>${s.gender==='All'?'All Genders':esc(s.gender)}</b> · ${esc(s.source)}<br>${esc(s.conditions)}</p>`;
- $('markHeading').textContent=event.discipline==='track'?'Time (seconds)':'Distance / height (m)';$('sheetControls').hidden=false;renderSheet();
+ $('markHeading').textContent=event.discipline==='track'?'Time (seconds)':'Distance / height (m)';$('sheetControls').hidden=false;if(matchMedia('(max-width:800px)').matches)$('sessionSetup').open=false;renderSheet();
+ $('sessionSummary').insertAdjacentHTML('beforeend',`<p class="muted">Record ${event.discipline==='track'?'time in seconds':'distance / height in metres'}.</p>`);
 }
 function renderSheet(){
  const q=$('search').value.trim().toLowerCase(),n=S.attempt;
