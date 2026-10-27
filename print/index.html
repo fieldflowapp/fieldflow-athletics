@@ -94,7 +94,26 @@ function fieldMark(v){return v==null||v===''?'—':Number(v).toFixed(2)+' m';}
 function fieldStatus(x){if(!x)return '—';if(x.status==='valid')return fieldMark(x.mark_m);return ({foul:'X',pass:'–',pending:'—'})[x.status]||x.status||'—';}
 function hjResult(x){return ({clear:'O',miss:'X',pass:'–'})[x?.result]||'—';}
 let allEvents=[];
-function filteredEvents(){return allEvents.filter(e=>($('categoryFilter').value==='All'||e.category===$('categoryFilter').value)&&($('genderFilter').value==='All'||e.gender===$('genderFilter').value));}
+const CATEGORY_ORDER=['Y5','Y6','Y7','Y8','Intermediate','Senior'];
+function reportEventOrder(events){
+  const groupOrder=new Map();
+  events.forEach(e=>{
+    const key=e.category+'|'+e.discipline+'|'+(e.code||e.name);
+    const n=Number(e.sort_order);
+    groupOrder.set(key,Math.min(groupOrder.get(key)??Infinity,Number.isFinite(n)?n:9999));
+  });
+  const categoryRank=c=>{const i=CATEGORY_ORDER.indexOf(c);return i<0?999:i;};
+  const groupKey=e=>e.category+'|'+e.discipline+'|'+(e.code||e.name);
+  return [...events].sort((a,b)=>
+    categoryRank(a.category)-categoryRank(b.category)||
+    a.category.localeCompare(b.category)||
+    groupOrder.get(groupKey(a))-groupOrder.get(groupKey(b))||
+    (a.code||a.name).localeCompare(b.code||b.name,undefined,{numeric:true})||
+    (a.discipline||'').localeCompare(b.discipline||'')||
+    (a.gender==='F'?0:a.gender==='M'?1:2)-(b.gender==='F'?0:b.gender==='M'?1:2)
+  );
+}
+function filteredEvents(){return reportEventOrder(allEvents.filter(e=>($('categoryFilter').value==='All'||e.category===$('categoryFilter').value)&&($('genderFilter').value==='All'||e.gender===$('genderFilter').value)));}
 function filterEvents(){let events=filteredEvents();$('eventSelect').innerHTML=events.map(e=>'<option value="'+esc(e.id)+'">'+esc(eventTitle(e))+'</option>').join('');}
 async function buildFullReport(){
   const events=filteredEvents();if(!events.length){$('sheet').innerHTML='<div class="empty">No events for these filters.</div>';return;}
