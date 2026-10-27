@@ -12,7 +12,7 @@ const mock=()=>{
   constructor(table){this.table=table;this.filters=[];this.start=0;this.end=499}
   select(){return this}eq(k,v){this.filters.push([k,v]);return this}order(){return this}range(a,b){this.start=a;this.end=b;return this}single(){this.one=true;return this}insert(value){this.value=value;return this}
   then(resolve,reject){try{let rows;
-   if(this.table==='tournaments')rows=[{id:'tournament',name:'Test tournament'}];
+   if(this.table==='tournaments')rows=[{id:'tournament',name:'Test tournament',slug:'intercolour-athletics-2026'}];
    else if(this.table==='athletics_athletes')rows=athletes;
    else if(this.table==='athletics_events')rows=events;
    else if(this.table==='athletics_class_sessions'){if(this.value){sessions.push({id:'session-'+(++sequence),...this.value});rows=[sessions.at(-1)]}else rows=sessions}
