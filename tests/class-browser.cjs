@@ -11,7 +11,7 @@ const mock=()=>{
  const persist=()=>localStorage.setItem('test-db',JSON.stringify(db));const next=prefix=>prefix+'-'+(++db.sequence);
  const sheet=()=>entries.map(e=>{const a=athletes.find(a=>a.id===e.athlete_id),m=marks.find(m=>m.session_id===e.session_id&&m.athlete_id===e.athlete_id&&m.attempt_no===e.round_no);return {...e,first_name:a.first_name,last_name:a.last_name,gender:a.gender,level:a.level,color:a.color,official_time:m?.mark??null,status:m?(m.status==='valid'?'finished':m.status):'scheduled',notes:m?.notes||''}});
  function saveMarks(sid,attempt,rows){const session=sessions.find(s=>s.id===sid);const result=rows.map(r=>{let m=marks.find(m=>m.athlete_id===r.athlete_id&&m.session_id===sid&&m.attempt_no===attempt);const previous=m?structuredClone(m):null;const a=athletes.find(a=>a.id===r.athlete_id);if(!m){m={id:next('mark'),session_id:sid,attempt_no:attempt,category:a.level,gender:a.gender,conditions:session.conditions||'',timing_method:session.timing_method||'unspecified',implement_kg:session.implement_kg??null};marks.push(m)}Object.assign(m,r);if(previous&&JSON.stringify(previous)!==JSON.stringify(m))audit.push({id:next('audit'),session_id:sid,athlete_id:r.athlete_id,changed_at:new Date().toISOString(),changed_by:'teacher',actor_label:'Teacher',before_value:previous,after_value:structuredClone(m)});return m});persist();return structuredClone(result)}
- window.testState={...db,failSave:false};
+ window.testState={...db,failSave:false};window.addEventListener('storage',e=>{if(e.key!=='test-db')return;const fresh=JSON.parse(e.newValue);for(const key of ['sessions','marks','attendance','heats','entries','teams','legs','audit'])db[key].splice(0,db[key].length,...fresh[key]);db.sequence=fresh.sequence});
  class Query{
   constructor(table){this.table=table;this.filters=[];this.start=0;this.end=499}
   select(){return this}eq(k,v){this.filters.push(r=>k==='tournament_id'||r[k]===v);return this}in(k,v){this.filters.push(r=>v.includes(r[k]));return this}order(){return this}range(a,b){this.start=a;this.end=b;return this}single(){this.one=true;return this}insert(value){this.value=value;return this}update(value){this.changes=value;return this}
@@ -58,6 +58,17 @@ const mock=()=>{
   if(fn==='athletics_generate_class_heats'){
    const s=sessions.find(s=>s.id===p.p_session_id),round=Math.max(0,...heats.filter(h=>h.session_id===s.id).map(h=>h.round_no),...marks.filter(m=>m.session_id===s.id).map(m=>m.attempt_no))+1;
    const present=athletes.filter(a=>attendance.some(att=>att.session_id===s.id&&att.athlete_id===a.id&&att.present&&att.available)&&(p.p_athletes==null||p.p_athletes.includes(a.id)));let number=0;const created=[];
+   if(round>1){
+    const past=heats.filter(h=>h.session_id===s.id),first=Math.min(...past.map(h=>h.round_no)),mixed=past.some(h=>h.round_no===first&&h.gender==='All');
+    const templates=[...new Map(past.map(h=>[h.heat_number,h])).values()];
+    for(const old of templates){const h={...old,id:next('heat'),round_no:round,status:'scheduled'};heats.push(h);created.push(h)}
+    for(const a of present){const previous=entries.filter(e=>e.session_id===s.id&&e.athlete_id===a.id&&e.round_no<round).sort((a,b)=>a.round_no-b.round_no)[0];let h,lane;
+     if(previous){const old=heats.find(h=>h.id===previous.heat_id);h=created.find(h=>h.heat_number===old.heat_number);lane=previous.lane}
+     else{h=created.filter(h=>h.gender===(mixed?'All':a.gender)).sort((a,b)=>b.heat_number-a.heat_number)[0];if(!h){h={id:next('heat'),session_id:s.id,round_no:round,heat_number:Math.max(...created.map(h=>h.heat_number))+1,gender:a.gender,status:'scheduled'};heats.push(h);created.push(h)}lane=Math.max(0,...entries.filter(e=>e.session_id===s.id&&heats.find(x=>x.id===e.heat_id).heat_number===h.heat_number).map(e=>e.lane))+1}
+     entries.push({id:next('entry'),heat_id:h.id,session_id:s.id,round_no:round,athlete_id:a.id,lane});
+    }persist();return {data:structuredClone(created)};
+   }
+
    for(const gender of p.p_mode==='gender'?['F','M']:[s.gender]){const group=present.filter(a=>gender==='All'||a.gender===gender);if(!group.length)continue;const count=p.p_heat_count||Math.ceil(group.length/p.p_capacity);for(let i=0;i<count;i++){const h={id:next('heat'),session_id:s.id,round_no:round,heat_number:++number,gender,status:'scheduled'};heats.push(h);created.push(h);group.filter((a,j)=>j%count===i).forEach((a,j)=>entries.push({id:next('entry'),heat_id:h.id,session_id:s.id,round_no:round,athlete_id:a.id,lane:j+1}))}}
    persist();return {data:structuredClone(created)};
   }
@@ -106,18 +117,18 @@ const mock=()=>{
   await page.locator('.assign-heat').nth(0).selectOption(originalAssignments[1]);await page.locator('.assign-heat').nth(1).selectOption(originalAssignments[0]);await page.click('#saveSeriesLayout');await page.waitForFunction(()=>document.getElementById('message').textContent.includes('Series and lanes saved'));
   const href=await page.locator('.photo-link').first().getAttribute('href');assert.ok(href.includes('classHeat='));
   await page.evaluate(()=>{const s=testState.sessions.at(-1),h=testState.heats.find(h=>h.session_id===s.id),en=testState.entries.find(e=>e.heat_id===h.id);localStorage.setItem('ff-photo-pending-v1:class-heat:'+h.id,JSON.stringify({savedAt:Date.now(),assignments:[[en.id,12.345]]}))});
-  await page.locator('.photo-link').first().click();await page.locator('#saveResultsBtn').waitFor({state:'visible'});assert.ok((await page.locator('#heatContext').textContent()).includes('CLASS'));
-  await page.click('#saveResultsBtn');await page.waitForFunction(()=>document.getElementById('mode').textContent==='RESULTS SAVED');await page.click('#backBtn');await page.locator('#trackControls').waitFor({state:'visible'});
+  const originalUrl=page.url();await page.evaluate(()=>window.parentSessionToken='still-open');const returnHeat=await page.locator('.photo-link').first().getAttribute('data-class-heat');await page.locator('.photo-link').first().click();const photo=page.frameLocator('#classPhotoFrame');await photo.locator('#saveResultsBtn').waitFor({state:'visible'});assert.ok((await photo.locator('#heatContext').textContent()).includes('CLASS'));assert.equal(page.url(),originalUrl);
+  await photo.locator('#saveResultsBtn').click();await photo.locator('#mode').filter({hasText:'RESULTS SAVED'}).waitFor();await photo.locator('#backBtn').click();await page.locator('#classPhotoDialog').waitFor({state:'hidden'});await page.waitForFunction(id=>{const r=document.getElementById('class-heat-'+id)?.getBoundingClientRect();return r&&r.top>=0&&r.top<100},returnHeat);assert.equal(await page.evaluate(()=>window.parentSessionToken),'still-open');assert.equal(page.url(),originalUrl);
   assert.equal(await page.locator('.heat-time').first().inputValue(),'12.345');
-  await page.selectOption('#heatMode','gender');await page.fill('#heatCapacity','8');await page.click('#generateHeats');await page.waitForFunction(()=>document.getElementById('roundPicker').value==='2');
-  assert.equal(await page.locator('.heat-card').count(),2);assert.ok((await page.locator('#heatList').textContent()).includes('Female'));assert.ok((await page.locator('#heatList').textContent()).includes('Male'));
+  assert.equal(await page.locator('#heatMode').isDisabled(),true);const firstAssignments=await page.evaluate(()=>testState.entries.filter(e=>e.round_no===1).map(e=>[e.athlete_id,testState.heats.find(h=>h.id===e.heat_id).heat_number,e.lane]));await page.click('#generateHeats');await page.waitForFunction(()=>document.getElementById('roundPicker').value==='2');
+  assert.deepEqual(await page.evaluate(()=>testState.entries.filter(e=>e.round_no===2).map(e=>[e.athlete_id,testState.heats.find(h=>h.id===e.heat_id).heat_number,e.lane])),firstAssignments);assert.equal(await page.locator('.heat-card').count(),2);assert.ok((await page.locator('#heatList').textContent()).includes('Female'));assert.ok((await page.locator('#heatList').textContent()).includes('Male'));
   await page.selectOption('#roundPicker','1');assert.equal(await page.locator('.heat-time').first().inputValue(),'12.345');
   // A selected subset repeats while other present students keep their earlier marks.
   await page.click('#noneRound');await page.locator('[data-round-athlete="girl"]').check();await page.click('#generateHeats');await page.waitForFunction(()=>document.getElementById('roundPicker').value==='3');assert.equal(await page.locator('.heat-runner').count(),1);
   const trackRoot=await page.evaluate(()=>testState.sessions.at(-1).id);
   // A departure and late arrival preserve historical attendance and previous times.
   await page.click('#attendanceStepBtn');await page.locator('[data-present="girl"]').uncheck();await page.locator('[data-present="absent"]').check();await page.click('#saveAttendance');await page.waitForFunction(()=>document.getElementById('message').textContent.includes('available students saved'));
-  assert.equal(await page.locator('[data-round-athlete="girl"]').count(),0);assert.equal(await page.locator('[data-round-athlete="absent"]').count(),1);
+  assert.equal(await page.locator('[data-round-athlete="girl"]').count(),0);assert.equal(await page.locator('[data-round-athlete="absent"]').count(),1);await page.click('#generateHeats');await page.waitForFunction(()=>document.getElementById('roundPicker').value==='4');assert.equal(await page.evaluate(()=>{const e=testState.entries.find(e=>e.athlete_id==='absent'&&e.round_no===4);return testState.heats.find(h=>h.id===e.heat_id).heat_number}),2);
   assert.equal(await page.evaluate(id=>testState.attendance.find(a=>a.session_id===id&&a.athlete_id==='girl').present,trackRoot),true);
   await page.click('#attendanceStepBtn');await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');
   // Each new activity starts with a blank attendance checklist.

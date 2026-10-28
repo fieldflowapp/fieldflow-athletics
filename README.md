@@ -60,3 +60,9 @@ Each additional activity starts with `attendance_recorded=false` and an empty li
 Rankings include a Print button that refreshes the selected filters and prints only the results, with event/category/gender/source context. Print CSS uses A4 landscape, repeated table headers and unbounded table height for multiple pages. The browser suite verifies actual PDF page dimensions and pagination.
 
 400 m, 600 m, 800 m and relay activities default to `m:ss.cc`, with a seconds-format option. Inputs accept `1:23.45` or total seconds. History, rankings, summaries and chart labels use clock format for those events. Storage remains numeric seconds; viewing rounded hundredths or changing timing metadata preserves the exact original Photo Finish value.
+
+### v37 — stable rounds and Photo Finish return
+
+The first track round establishes series numbers, gender groups and lanes. Subsequent rounds retain those assignments for selected available athletes; unselected participants leave gaps rather than causing a redraw. Newcomers append to the last series for their gender, or the last mixed series. If a gender has no series, one is added. Initial capacity/count settings do not redistribute subsequent rounds. Every round still has independent results, and earlier marks are never overwritten. Apply `database/craighouse-stable-rounds-v37.sql`; `tests/class-v37-database.sql` validates mixed/gender layouts, newcomers, repeaters and result preservation using a rollback transaction.
+
+Class Photo Finish opens in a same-origin full-screen dialog over the existing session. Back stops the camera using the existing cleanup/unsaved-result confirmation, closes the dialog, refreshes saved results and focuses the originating series. The parent app is not reloaded. Messages require the same origin, the actual iframe window and the expected heat ID. A normal direct Photo Finish URL still carries session, round and heat-focus parameters for a scrolled return if opened separately.

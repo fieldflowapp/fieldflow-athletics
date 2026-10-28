@@ -77,4 +77,15 @@ $('printRanking').onclick=async()=>{
  document.body.classList.add('ranking-print');window.print();
 };
 window.addEventListener('afterprint',()=>document.body.classList.remove('ranking-print'));
+function restoreHeatPosition(id){requestAnimationFrame(()=>requestAnimationFrame(()=>{const card=document.getElementById('class-heat-'+id);if(card){card.focus({preventScroll:true});card.scrollIntoView({block:'start',behavior:'instant'})}}))}
+function openClassPhoto(link){
+ const dialog=$('classPhotoDialog'),frame=$('classPhotoFrame');S.photoOpen={heat:link.dataset.classHeat,session:S.session.id,round:S.round};
+ const url=new URL(link.href,location.href);url.searchParams.set('embedded','1');frame.src=url.href;clearClassDrafts();dialog.showModal();
+}
+async function closeClassPhoto(){
+ const context=S.photoOpen;if(!context)return;S.photoOpen=null;$('classPhotoDialog').close();$('classPhotoFrame').src='about:blank';
+ await run(async()=>{S.heatDraft.clear();await loadSessionData();S.round=context.round;setDirty();renderHeats();notice('Returned to your series. Saved Photo Finish times refreshed.','success')});restoreHeatPosition(context.heat);
+}
+window.addEventListener('message',event=>{if(event.origin!==location.origin||event.source!==$('classPhotoFrame').contentWindow||!S.photoOpen)return;if(event.data?.type==='fieldflow-class-photo-closed'&&event.data.heatId===S.photoOpen.heat)closeClassPhoto()});
+$('classPhotoDialog').addEventListener('cancel',event=>{event.preventDefault();$('classPhotoFrame').contentWindow.postMessage({type:'fieldflow-class-photo-request-close'},location.origin)});
 run(boot);

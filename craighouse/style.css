@@ -45,3 +45,5 @@ fieldset{border:1px solid var(--line);border-radius:10px;margin:0 0 16px;padding
  #rankingPrint th{position:static;background:#eee;letter-spacing:normal;font-size:9pt}
  #rankingPrint td:first-child{width:14mm}#rankingPrint th:nth-child(2){width:35%}
 }
+
+#classPhotoDialog{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;padding:0;margin:0;border:0;background:#061722;overflow:hidden}#classPhotoDialog::backdrop{background:#061722}#classPhotoFrame{display:block;width:100%;height:100%;border:0}.heat-card{scroll-margin-top:16px}.heat-card:focus{outline:2px solid #12c8ff;outline-offset:3px}
