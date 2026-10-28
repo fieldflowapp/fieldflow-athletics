@@ -36,3 +36,17 @@ This repository is intentionally independent from other FieldFlow sports apps. E
 Public results/schedule/bases will be added later as a separate public-facing surface.
 
 Deployment status: GitHub Pages enabled.
+
+### Class Mode v34 — complete class sessions
+
+A saved class can contain several activities with one shared attendance list. The first activity retains the original session ID; additional activities use `parent_session_id`. Existing marks and official result identities are preserved. The UI shows one session with an activity selector.
+
+Attendance distinguishes historical participation (`present`) from current availability (`available`). Late arrivals propagate across activities; departing students keep all results and are excluded from future heat generation. Teachers select the participants for each new track round. Lane/series edits are atomic and only allowed before either affected heat has results; Photo Finish keeps stable entry IDs.
+
+Mark-level conditions snapshot timing method, implement weight and free-text conditions. Defaults affect new marks; corrections retain original conditions unless explicitly edited. Manual and Photo Finish marks are separated in comparison groups. An append-only correction log records old/new values, teacher identity and time. The only privileged writer is a private, non-callable audit trigger; all normal RPCs use invoker permissions and administrator RLS.
+
+Relays have named teams and ordered members for each attempt, restricted to the activity's Male/Female setting. Saved membership is locked; later attempts can use different teams. Team times are recorded in each member's history with team/leg labels and are never treated as individual splits. Legacy colour-based relay marks remain visible.
+
+The session summary includes attendance, result counts, missing results, comparable best marks and corrections. Closing a session protects all its activities; teachers can explicitly reopen it. Official competition scoring is unchanged.
+
+Apply `database/craighouse-sessions-v3.sql` after v1 and v2. Validate with `tests/class-v3-database.sql` (transaction rollback), `node --test tests/class-logic.test.cjs`, and `node tests/class-browser.cjs`. Browser tests use mock transport on desktop/mobile and cover actual navigation to/from the class Photo Finish page; camera hardware requires device testing.

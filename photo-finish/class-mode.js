@@ -15,7 +15,7 @@
    },
    async save(pending){
     if(!heatId||!pending.length)throw Error('No class heat results to save');
-    await checked(sb.rpc('athletics_save_class_heat',{p_heat_id:heatId,p_results:pending.map(r=>({id:r.entryId,official_time:r.sec,status:'finished',notes:'Class Photo Finish'})),p_complete:false}));
+    await checked(sb.rpc('athletics_save_class_heat',{p_heat_id:heatId,p_results:pending.map(r=>({id:r.entryId,official_time:r.sec,status:'finished',notes:'Class Photo Finish',timing_method:'photo_finish'})),p_complete:false}));
     return checked(sb.from('athletics_class_series_sheet').select('id,official_time,status').eq('heat_id',heatId).in('id',pending.map(r=>r.entryId)));
    }
   };
