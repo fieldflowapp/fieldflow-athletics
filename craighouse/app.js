@@ -1,7 +1,7 @@
 'use strict';
 const sb=supabase.createClient('https://qhsvvlcgwdmxxappplzh.supabase.co','sb_publishable_AzlSdUYiNA5DM7BXGOe5OA_M8wrJGoO');
 const $=id=>document.getElementById(id),L=ClassLogic;
-const S={tournament:null,athletes:[],events:[],sessions:[],session:null,marks:[],draft:new Map(),dirty:false,busy:false,history:[],historyToken:0,attempt:1,round:1,attendance:[],present:new Set(),attendanceSelection:new Set(),attendanceDirty:false,heats:[],series:[],heatDraft:new Map(),relayDraft:new Map(),root:null,activities:[],rootAttendance:[],roundSelection:new Set(),roundSelectionKey:null,teams:[],legs:[],configDirty:false};
+const S={tournament:null,athletes:[],events:[],sessions:[],session:null,marks:[],draft:new Map(),dirty:false,busy:false,history:[],historyToken:0,attempt:1,round:1,attendance:[],present:new Set(),attendanceSelection:new Set(),attendanceDirty:false,heats:[],series:[],heatDraft:new Map(),relayDraft:new Map(),root:null,activities:[],roundSelection:new Set(),roundSelectionKey:null,teams:[],legs:[],configDirty:false};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const name=a=>`${a.last_name}, ${a.first_name}`;
 const option=(v,t)=>`<option value="${esc(v)}">${esc(t)}</option>`;
@@ -12,7 +12,7 @@ function proceed(){return !S.busy&&(!S.dirty||confirm('Discard unsaved class res
 window.ffCanUpdate=()=>!S.dirty&&!S.busy;
 window.addEventListener('beforeunload',e=>{if(S.dirty||S.busy){e.preventDefault();e.returnValue=''}});
 async function run(fn){if(S.busy)return;S.busy=true;$('app').inert=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn()}catch(e){notice(e.message,'error')}finally{S.busy=false;$('app').inert=false;document.querySelectorAll('button').forEach(b=>b.disabled=false)}}
-function tab(mode,initial=false){if(!initial&&!proceed())return;S.dirty=false;S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.attendanceDirty=false;S.configDirty=false;S.attendanceSelection=new Set(S.rootAttendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));for(const key of ['class','database','rank']){$(key+'Pane').hidden=key!==mode;$(key+'Tab').classList.toggle('active',key===mode)}if(mode==='database')loadHistory();if(mode==='class'&&S.session)showSessionStep(S.session.attendance_recorded?'record':'attendance');location.hash=mode}
+function tab(mode,initial=false){if(!initial&&!proceed())return;S.dirty=false;S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.attendanceDirty=false;S.configDirty=false;S.attendanceSelection=new Set(S.attendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));for(const key of ['class','database','rank']){$(key+'Pane').hidden=key!==mode;$(key+'Tab').classList.toggle('active',key===mode)}if(mode==='database')loadHistory();if(mode==='class'&&S.session)showSessionStep(S.session.attendance_recorded?'record':'attendance');location.hash=mode}
 function eventForSession(){return S.events.find(e=>e.id===S.session?.template_event_id)}
 function selectedCategories(){return [...document.querySelectorAll('#categoryChoices input:checked')].map(x=>x.value)}
 function updateGenderOptions(){const e=S.events.find(e=>e.id===$('event').value),old=$('gender').value;const relay=e?.discipline==='relay';$('gender').innerHTML=(relay?'':option('All','All Genders'))+option('M','Male')+option('F','Female');$('gender').value=relay?(old==='F'?'F':'M'):(old||'All')}
@@ -35,15 +35,14 @@ async function boot(){
 async function createSession(e){e.preventDefault();if(!proceed())return;await run(async()=>{const categories=selectedCategories();if(!categories.length)throw Error('Select at least one category.');const s=await checked(sb.from('athletics_class_sessions').insert({tournament_id:S.tournament.id,template_event_id:$('event').value,title:$('title').value.trim(),session_date:$('date').value,source:$('source').value,category:categories.length===1?categories[0]:'All',categories,gender:$('gender').value,conditions:$('conditions').value.trim(),timing_method:S.events.find(e=>e.id===$('event').value).discipline==='field'?'not_applicable':'manual'}).select().single());await sessions();await openSession(s);notice('Session created. Select the students present to continue.','success')})}
 async function loadSessionData(){
  const id=S.session.id;S.root=S.sessions.find(s=>s.id===(S.session.parent_session_id||id))||S.session;S.activities=S.sessions.filter(s=>s.id===S.root.id||s.parent_session_id===S.root.id);
- [S.marks,S.attendance,S.heats,S.series,S.rootAttendance,S.teams,S.legs]=await Promise.all([
+ [S.marks,S.attendance,S.heats,S.series,S.teams,S.legs]=await Promise.all([
  allRows(()=>sb.from('athletics_class_marks').select('*').eq('session_id',id).order('attempt_no').order('id')),
  allRows(()=>sb.from('athletics_class_attendance').select('*').eq('session_id',id).order('athlete_id')),
  allRows(()=>sb.from('athletics_class_heats').select('*').eq('session_id',id).order('round_no').order('heat_number')),
  allRows(()=>sb.from('athletics_class_series_sheet').select('*').eq('session_id',id).order('round_no').order('id')),
- allRows(()=>sb.from('athletics_class_attendance').select('*').eq('session_id',S.root.id).order('athlete_id')),
  allRows(()=>sb.from('athletics_class_relay_teams').select('*').eq('session_id',id).order('attempt_no').order('id')),
  allRows(()=>sb.from('athletics_class_relay_legs').select('*').eq('session_id',id).order('attempt_no').order('leg_order'))]);
- S.present=new Set(S.attendance.filter(x=>x.present).map(x=>x.athlete_id));S.attendanceSelection=new Set(S.rootAttendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));
+ S.present=new Set(S.attendance.filter(x=>x.present).map(x=>x.athlete_id));S.attendanceSelection=new Set(S.attendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));
 }
 async function openSession(s){
  const previous=S.session;S.session=s;try{await loadSessionData()}catch(e){S.session=previous;throw e}
@@ -53,28 +52,28 @@ async function openSession(s){
  $('heatCapacity').value=event.start_mode==='mass_start'?25:8;
  $('heatMode').value=s.gender==='All'?'mixed':'gender';
  const rounds=[...new Set(S.heats.map(h=>h.round_no))];S.round=Number(new URLSearchParams(location.search).get('round'))||rounds.at(-1)||1;
- renderActivityControls();showSessionStep(S.root.closed_at?'summary':s.attendance_recorded?'record':'attendance');
+ $('attendanceSearch').value='';$('attendanceGender').value='All';$('attendanceColour').innerHTML=option('All','All colours')+[...new Set(S.athletes.filter(a=>L.eligible(a,s)).map(a=>a.color).filter(Boolean))].sort().map(c=>option(c,c)).join('');renderActivityControls();showSessionStep(S.root.closed_at?'summary':s.attendance_recorded?'record':'attendance');
  const url=new URL(location.href);url.searchParams.set('session',s.id);history.replaceState(null,'',url);
 }
 function showSessionStep(step){
- $('summaryPane').hidden=step!=='summary';$('activityControls').hidden=step!=='record';$('summaryStepBtn').classList.toggle('active',step==='summary');$('attendancePane').hidden=step!=='attendance';for(const id of ['trackControls','relayControls','sheetControls'])$(id).hidden=true;
+ $('summaryPane').hidden=step!=='summary';$('activityControls').hidden=step==='summary';$('summaryStepBtn').classList.toggle('active',step==='summary');$('attendancePane').hidden=step!=='attendance';for(const id of ['trackControls','relayControls','sheetControls'])$(id).hidden=true;
  $('attendanceStepBtn').classList.toggle('active',step==='attendance');$('recordStepBtn').classList.toggle('active',step==='record');
  if(step==='summary'){renderSessionReview();return}if(S.root.closed_at){showSessionStep('summary');notice('Session closed. Reopen it from the summary to make changes.');return}
  if(step==='attendance'){renderAttendance();return}
  if(!S.session.attendance_recorded||S.attendanceDirty){showSessionStep('attendance');notice('Save present students before opening results.','error');return}
  const type=eventForSession().discipline;if(type==='track'){$('trackControls').hidden=false;renderHeats()}else if(type==='relay'){$('relayControls').hidden=false;renderRelay()}else{$('sheetControls').hidden=false;renderSheet()}
 }
-function eligibleAttendance(){const q=$('attendanceSearch').value.toLowerCase().trim();return S.athletes.filter(a=>L.eligible(a,S.root)&&(!q||`${name(a)} ${a.external_code} ${a.level}`.toLowerCase().includes(q)))}
+function eligibleAttendance(){const q=$('attendanceSearch').value.toLowerCase().trim();return S.athletes.filter(a=>L.attendanceMatches(a,S.session,{query:q,gender:$('attendanceGender').value,color:$('attendanceColour').value}))}
 function renderAttendance(){
  $('attendanceList').innerHTML=eligibleAttendance().map(a=>`<label class="attendance-student"><input type="checkbox" data-present="${a.id}" ${S.attendanceSelection.has(a.id)?'checked':''}><span><b>${esc(name(a))}</b><small>${esc(a.level)} · ${a.gender==='F'?'Female':'Male'} · ${esc(a.color)} · ${esc(a.external_code)}</small></span></label>`).join('');
- $('attendanceCount').textContent=S.attendanceSelection.size+' present selected';
+ $('attendanceCount').textContent=`${eligibleAttendance().length} shown · ${S.attendanceSelection.size} selected for this event`;
 }
 function setDirty(){S.dirty=S.attendanceDirty||S.draft.size>0||S.heatDraft.size>0||S.relayDraft.size>0||S.configDirty}
 async function saveAttendance(){await run(async()=>{
- const desired=[...S.attendanceSelection];const count=await checked(sb.rpc('athletics_save_class_attendance',{p_session_id:S.root.id,p_present:desired}));
- await loadSessionData();const verified=new Set(S.rootAttendance.filter(r=>r.present&&r.available!==false).map(r=>r.athlete_id));
+ const desired=[...S.attendanceSelection];const count=await checked(sb.rpc('athletics_save_class_attendance',{p_session_id:S.session.id,p_present:desired}));
+ await loadSessionData();const verified=new Set(S.attendance.filter(r=>r.present&&r.available!==false).map(r=>r.athlete_id));
  if(verified.size!==desired.length||desired.some(id=>!verified.has(id)))throw Error('Attendance verification failed. Retry before continuing.');
- for(const s of S.activities)s.attendance_recorded=true;S.session.attendance_recorded=true;S.root.attendance_recorded=true;S.roundSelectionKey=null;S.attendanceDirty=false;setDirty();showSessionStep('record');notice(`${count} available students saved. Previous attendance and results preserved.`, 'success');
+ S.session.attendance_recorded=true;const stored=S.sessions.find(s=>s.id===S.session.id);if(stored)stored.attendance_recorded=true;S.roundSelectionKey=null;S.attendanceDirty=false;setDirty();showSessionStep('record');notice(`${count} available students saved for this event. Other event attendance is unchanged.`, 'success');
 })}
 function presentAthletes(){return S.athletes.filter(a=>S.attendance.some(x=>x.athlete_id===a.id&&x.present&&x.available!==false)||S.marks.some(m=>m.athlete_id===a.id&&m.attempt_no===S.attempt))}
 function renderSheet(){
@@ -155,7 +154,7 @@ $('attempt').onchange=()=>changeAttempt(Number($('attempt').value));$('nextAttem
 $('athleteSearch').oninput=()=>{athleteOptions();loadHistory()};$('athletePicker').onchange=loadHistory;$('historyEvent').onchange=renderHistory;$('historySource').onchange=renderHistory;$('refreshHistory').onclick=loadHistory;$('loadRanking').onclick=ranking;
 sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){S.dirty=false;location.reload()}});
 $('event').onchange=updateGenderOptions;
-$('attendanceSearch').oninput=renderAttendance;
+$('attendanceSearch').oninput=renderAttendance;$('attendanceGender').onchange=renderAttendance;$('attendanceColour').onchange=renderAttendance;
 $('attendanceList').onchange=e=>{const id=e.target.dataset.present;if(!id)return;if(e.target.checked)S.attendanceSelection.add(id);else S.attendanceSelection.delete(id);S.attendanceDirty=true;setDirty();$('attendanceCount').textContent=S.attendanceSelection.size+' present selected'};
 for(const [id,checked] of [['selectPresent',true],['clearPresent',false]])$(id).onclick=()=>{for(const a of eligibleAttendance()){if(checked)S.attendanceSelection.add(a.id);else S.attendanceSelection.delete(a.id)}S.attendanceDirty=true;setDirty();renderAttendance()};
 $('saveAttendance').onclick=saveAttendance;

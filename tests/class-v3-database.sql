@@ -15,7 +15,10 @@ begin
  insert into athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,categories,gender,timing_method) values(tid,eid,'ROLLBACK v3',current_date,'All',array['Y7','Y8'],'All','manual') returning id into sid;
  perform athletics_save_class_attendance(sid,ids);
  select * into child from athletics_add_class_activity(sid,fid,'All','Dry','not_applicable',3);
- if (select count(*) from athletics_class_attendance where session_id=child.id and available)<>2 then raise exception 'Shared attendance missing';end if;
+ if child.attendance_recorded or exists(select 1 from athletics_class_attendance where session_id=child.id) then raise exception 'New activity copied attendance';end if;
+ begin perform athletics_save_class_marks(child.id,1,jsonb_build_array(jsonb_build_object('athlete_id',girl,'mark',4.5,'status','valid')));raise exception 'New activity bypassed attendance';exception when insufficient_privilege then null;end;
+ perform athletics_save_class_attendance(child.id,array[girl]);
+ if (select count(*) from athletics_class_attendance where session_id=sid and available)<>2 then raise exception 'Child attendance changed parent';end if;
  perform athletics_save_class_marks(child.id,1,jsonb_build_array(jsonb_build_object('athlete_id',girl,'mark',4.5,'status','valid')));
  perform athletics_save_class_marks(child.id,1,jsonb_build_array(jsonb_build_object('athlete_id',girl,'mark',4.6,'status','valid')));
  if (select count(*) from athletics_class_mark_audit where session_id=child.id)<>1 then raise exception 'Correction audit missing';end if;
@@ -36,11 +39,14 @@ begin
  perform athletics_save_class_heat(h2,jsonb_build_array(jsonb_build_object('id',entry,'official_time',12.345,'status','finished','timing_method','photo_finish')),true);
  if not exists(select 1 from athletics_class_marks where session_id=sid and timing_method='photo_finish') then raise exception 'Photo method not stored';end if;
  begin perform athletics_edit_class_series(sid,1,jsonb_build_array(jsonb_build_object('id',entry,'heat_id',h2,'lane',2)));raise exception 'Recorded heat moved';exception when raise_exception then if sqlerrm<>'A series with saved results cannot be rearranged' then raise;end if;end;
- -- One repeater only; later a departure + late arrival propagate to every activity.
+ -- One repeater only. Later attendance edits stay scoped to their own activity.
  perform athletics_generate_class_heats(sid,'mixed',8,0,array[girl]);
  if (select count(*) from athletics_class_heat_entries where session_id=sid and round_no=2)<>1 then raise exception 'Unselected runner repeated';end if;
  perform athletics_save_class_attendance(child.id,array[boy,late]);
- if not exists(select 1 from athletics_class_attendance where session_id=sid and athlete_id=girl and present and not available) then raise exception 'Attendance history lost';end if;
+ if not exists(select 1 from athletics_class_attendance where session_id=child.id and athlete_id=girl and present and not available) then raise exception 'Attendance history lost';end if;
+ if not exists(select 1 from athletics_class_attendance where session_id=sid and athlete_id=girl and available) then raise exception 'Child departure changed track attendance';end if;
+ if exists(select 1 from athletics_class_attendance where session_id=sid and athlete_id=late and available) then raise exception 'Child arrival changed track attendance';end if;
+ perform athletics_save_class_attendance(sid,array[boy,late]);
  if not exists(select 1 from athletics_class_attendance where session_id=child.id and athlete_id=late and present and available) then raise exception 'Late arrival missing';end if;
  if (select count(*) from athletics_class_marks where session_id=child.id)<>2 then raise exception 'Departing deleted marks';end if;
  begin perform athletics_generate_class_heats(sid,'mixed',8,0,array[girl]);raise exception 'Departed runner selected';exception when raise_exception then if sqlerrm<>'Select available participants for this round' then raise;end if;end;
@@ -48,6 +54,9 @@ begin
  if exists(select 1 from athletics_class_heat_entries where session_id=sid and round_no=3 and athlete_id=girl) then raise exception 'Departed runner generated';end if;
  perform athletics_save_class_attendance(sid,array[girl,boy,late]);
  select * into relay from athletics_add_class_activity(sid,rid,'F','','manual',null);
+ if relay.attendance_recorded or exists(select 1 from athletics_class_attendance where session_id=relay.id) then raise exception 'Relay copied attendance';end if;
+ begin perform athletics_save_class_attendance(relay.id,array[boy]);raise exception 'Male accepted in female relay attendance';exception when raise_exception then if sqlerrm<>'An athlete does not belong to the selected categories / gender' then raise;end if;end;
+ perform athletics_save_class_attendance(relay.id,array[girl,late]);
  perform athletics_configure_class_relay(relay.id,1,jsonb_build_array(jsonb_build_object('name','Custom team','athletes',array[late,girl])));
  select id into team from athletics_class_relay_teams where session_id=relay.id;
  if not exists(select 1 from athletics_class_relay_legs where team_id=team and athlete_id=late and leg_order=1) then raise exception 'Relay order wrong';end if;
@@ -70,4 +79,4 @@ begin
  if score_before is distinct from (select md5(coalesce(jsonb_agg(to_jsonb(x) order by to_jsonb(x)::text)::text,'')) from athletics_scoreboard_overall x) then raise exception 'Official points modified';end if;
 end $$;
 rollback;
-select 'PASS v3: multi-event shared attendance, late arrivals and departures, selected repeaters, atomic lane swaps, saved heat lock, Photo Finish conditions, audit immutability, implement snapshots, ordered relay teams, session closure, RLS, unchanged official points. Rolled back.' as result;
+select 'PASS v3: multi-event independent attendance, late arrivals and departures, selected repeaters, atomic lane swaps, saved heat lock, Photo Finish conditions, audit immutability, implement snapshots, ordered relay teams, session closure, RLS, unchanged official points. Rolled back.' as result;

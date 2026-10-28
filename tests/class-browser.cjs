@@ -37,11 +37,11 @@ const mock=()=>{
   if(window.testState.failSave)return {error:{message:'Test network error'}};
   if(fn==='athletics_save_class_marks')return {data:saveMarks(p.p_session_id,p.p_attempt,p.p_marks)};
   if(fn==='athletics_add_class_activity'){
-   const selected=sessions.find(s=>s.id===p.p_session_id),root=sessions.find(s=>s.id===(selected.parent_session_id||selected.id));const child={...root,id:next('session'),parent_session_id:root.id,template_event_id:p.p_event_id,gender:p.p_gender,conditions:p.p_conditions,timing_method:p.p_timing,implement_kg:p.p_implement};sessions.push(child);for(const att of attendance.filter(x=>x.session_id===root.id)){const a=athletes.find(a=>a.id===att.athlete_id);if(child.gender==='All'||child.gender===a.gender)attendance.push({...att,session_id:child.id})}persist();return {data:structuredClone(child)};
+   const selected=sessions.find(s=>s.id===p.p_session_id),root=sessions.find(s=>s.id===(selected.parent_session_id||selected.id));const child={...root,id:next('session'),parent_session_id:root.id,template_event_id:p.p_event_id,gender:p.p_gender,conditions:p.p_conditions,timing_method:p.p_timing,implement_kg:p.p_implement,attendance_recorded:false};sessions.push(child);persist();return {data:structuredClone(child)};
   }
   if(fn==='athletics_save_class_attendance'){
    const selected=sessions.find(s=>s.id===p.p_session_id),root=sessions.find(s=>s.id===(selected.parent_session_id||selected.id));
-   for(const s of sessions.filter(s=>s.id===root.id||s.parent_session_id===root.id)){for(const a of athletes.filter(a=>s.gender==='All'||a.gender===s.gender)){let att=attendance.find(r=>r.session_id===s.id&&r.athlete_id===a.id);if(!att){att={session_id:s.id,athlete_id:a.id,present:false};attendance.push(att)}att.available=p.p_present.includes(a.id);att.present=att.present||att.available}s.attendance_recorded=true}persist();return {data:p.p_present.length};
+   for(const s of sessions.filter(s=>s.id===p.p_session_id)){for(const a of athletes.filter(a=>s.gender==='All'||a.gender===s.gender)){let att=attendance.find(r=>r.session_id===s.id&&r.athlete_id===a.id);if(!att){att={session_id:s.id,athlete_id:a.id,present:false};attendance.push(att)}att.available=p.p_present.includes(a.id);att.present=att.present||att.available}s.attendance_recorded=true}persist();return {data:p.p_present.length};
   }
   if(fn==='athletics_edit_class_series'){
    for(const r of p.p_entries){const e=entries.find(e=>e.id===r.id);e.heat_id=r.heat_id;e.lane=r.lane}persist();return {data:null};
@@ -119,14 +119,30 @@ const mock=()=>{
   assert.equal(await page.locator('[data-round-athlete="girl"]').count(),0);assert.equal(await page.locator('[data-round-athlete="absent"]').count(),1);
   assert.equal(await page.evaluate(id=>testState.attendance.find(a=>a.session_id===id&&a.athlete_id==='girl').present,trackRoot),true);
   await page.click('#attendanceStepBtn');await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');
-  // Second activity uses the exact same session attendance without another checklist.
-  await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','event');await page.click('#addActivity');await page.locator('#sheetControls').waitFor({state:'visible'});
-  assert.equal(await page.locator('#sheet tr').count(),3);assert.equal(await page.locator('#activityPicker option').count(),2);assert.equal(await page.locator('#sessionPicker option').count(),3);
+  // Each new activity starts with a blank attendance checklist.
+  await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','event');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
+  assert.equal(await page.locator('#attendanceList input:checked').count(),0);assert.equal(await page.locator('#sheetControls').isVisible(),false);
+  const fieldActivity=await page.locator('#activityPicker').inputValue();
+  await page.click('#recordStepBtn');assert.equal(await page.locator('#sheetControls').isVisible(),false);
+  // Combined filters and select-visible retain selections hidden by another filter.
+  await page.selectOption('#attendanceGender','F');await page.selectOption('#attendanceColour','Blue');assert.equal(await page.locator('#attendanceList input').count(),1);await page.click('#selectPresent');
+  await page.selectOption('#attendanceGender','M');assert.equal(await page.locator('#attendanceList input').count(),0);
+  await page.selectOption('#attendanceColour','White');await page.click('#selectPresent');await page.click('#clearPresent');
+  await page.selectOption('#attendanceGender','All');await page.selectOption('#attendanceColour','All');assert.equal(await page.locator('#attendanceList input:checked').count(),1);assert.equal(await page.locator('[data-present="girl"]').isChecked(),true);
+  await page.fill('#attendanceSearch','TEST3');assert.equal(await page.locator('#attendanceList input').count(),1);await page.click('#selectPresent');await page.fill('#attendanceSearch','');
+  await page.screenshot({path:'/tmp/class-attendance-'+viewport.width+'.png',fullPage:true});
+  await page.click('#saveAttendance');await page.locator('#sheetControls').waitFor({state:'visible'});
+  assert.equal(await page.locator('#sheet tr').count(),2);
+  assert.equal(await page.evaluate(id=>testState.attendance.filter(a=>a.session_id===id&&a.available).length,trackRoot),3);
+  // Switching activities restores each event's own list.
+  await page.selectOption('#activityPicker',trackRoot);await page.click('#attendanceStepBtn');assert.equal(await page.locator('#attendanceList input:checked').count(),3);
+  await page.selectOption('#activityPicker',fieldActivity);await page.click('#attendanceStepBtn');assert.equal(await page.locator('#attendanceList input:checked').count(),2);await page.click('#recordStepBtn');
+  assert.equal(await page.locator('#activityPicker option').count(),2);assert.equal(await page.locator('#sessionPicker option').count(),3);
   await page.locator('#activityControls details').nth(1).locator('summary').click();await page.fill('#activityWeight','3');await page.fill('#activityConditions','Dry surface');await page.click('#saveActivitySettings');await page.waitForFunction(()=>document.getElementById('message').textContent.includes('Defaults saved'));
   await page.locator('[data-athlete="girl"] .mark').fill('4.5');await page.click('#saveMarks');await page.waitForFunction(()=>document.getElementById('message').textContent.includes('individual results saved'));
   await page.locator('[data-athlete="girl"] .mark').fill('4.6');await page.click('#saveMarks');await page.waitForFunction(()=>!document.getElementById('app').inert);
   // A relay in the same mixed session has only Male / Female activity choices.
-  await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','relay');assert.deepEqual(await page.locator('#addGender option').evaluateAll(xs=>xs.map(x=>x.value)),['M','F']);await page.selectOption('#addGender','F');await page.click('#addActivity');await page.locator('#relayControls').waitFor({state:'visible'});
+  await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','relay');assert.deepEqual(await page.locator('#addGender option').evaluateAll(xs=>xs.map(x=>x.value)),['M','F']);await page.selectOption('#addGender','F');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});assert.equal(await page.locator('#attendanceList input:checked').count(),0);assert.equal(await page.locator('#attendanceList input').count(),1);await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');await page.locator('#relayControls').waitFor({state:'visible'});
   await page.locator('.team-name').fill('Falcons');await page.locator('.team-athlete').first().selectOption('girl');assert.equal(await page.locator('.team-athlete').first().locator('option[value="boy"]').count(),0);await page.click('#saveRelayTeams');await page.locator('.relay-time').waitFor();
   await page.locator('.relay-time').fill('60');await page.click('#saveRelay');await page.waitForFunction(()=>document.getElementById('message').textContent.includes('individual results saved'));assert.equal(await page.locator('.team-name').count(),0);
   await page.click('#summaryStepBtn');await page.locator('#toggleSessionClosed').waitFor();assert.ok((await page.locator('#summaryPane').textContent()).includes('Correction history · 1'));assert.ok((await page.locator('#summaryPane').textContent()).includes('No results yet'));
@@ -136,6 +152,6 @@ const mock=()=>{
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   assert.deepEqual(errors,[]);await page.screenshot({path:'/tmp/class-mode-'+viewport.width+'.png',fullPage:true});await page.close();
  }
- console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, shared attendance and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
+ console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
  }finally{await browser.close();server.close()}
 })().catch(e=>{console.error(e);process.exitCode=1});

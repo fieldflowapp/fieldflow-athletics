@@ -6,3 +6,13 @@ test('field personal best uses maximum and keeps different athletes',()=>{const 
 test('multiple categories admit selected years only and preserve gender',()=>{const s={category:'All',categories:['Y7','Y8'],gender:'All'};assert.ok(L.eligible({active:true,level:'Y7',gender:'F'},s));assert.ok(L.eligible({active:true,level:'Y8',gender:'M'},s));assert.equal(L.eligible({active:true,level:'Senior',gender:'M'},s),false)});
 test('Class Photo Finish saves only through the class RPC and verifies class sheet',async()=>{const adapter=require('../photo-finish/class-mode.js');const calls=[];const sb={rpc:async(n,p)=>{calls.push([n,p]);return {data:[]}},from:n=>{calls.push(n);assert.equal(n,'athletics_class_series_sheet');const q={select(){return q},eq(){return q},in(){return Promise.resolve({data:[{id:'entry',official_time:12.345,status:'finished'}]})}};return q}};const result=await adapter.create(sb,'class-heat').save([{entryId:'entry',sec:12.345}]);assert.equal(result[0].official_time,12.345);assert.equal(calls[0][0],'athletics_save_class_heat');assert.equal(calls[0][1].p_heat_id,'class-heat');assert.equal(calls[0][1].p_results[0].status,'finished')});
 test('Class Photo Finish rejects a failed RPC before verification',async()=>{const adapter=require('../photo-finish/class-mode.js');await assert.rejects(adapter.create({rpc:async()=>({error:{message:'offline'}}),from:()=>{throw Error('must not verify a failed save')}},'heat').save([{entryId:'entry',sec:12}]),/offline/)});
+
+test('attendance filters combine gender, colour and search within activity eligibility',()=>{
+ const session={gender:'All',categories:['Y7','Y8']};const girl={active:true,gender:'F',color:'Blue',level:'Y7',first_name:'Ana',last_name:'Test',external_code:'C123'};
+ assert.ok(L.attendanceMatches(girl,session,{gender:'F',color:'Blue',query:'c123'}));
+ assert.equal(L.attendanceMatches(girl,session,{gender:'M',color:'Blue'}),false);
+ assert.equal(L.attendanceMatches(girl,session,{gender:'F',color:'Red'}),false);
+ assert.equal(L.attendanceMatches(girl,{...session,gender:'M'},{gender:'All',color:'All'}),false);
+ assert.equal(L.attendanceMatches(girl,{...session,categories:['Y8']}),false);
+ assert.ok(L.attendanceMatches(girl,session,{query:' ANA '}));
+});
