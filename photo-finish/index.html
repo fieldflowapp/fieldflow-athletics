@@ -1071,8 +1071,8 @@ function closeCameraAndBack(){
 
   if(classMode){location.replace('../craighouse/?session='+encodeURIComponent(classSessionId||'')+'#class');return;}
   const fallback=relayMode
-    ? '../?event='+encodeURIComponent(eventId||'')
-    : '../?event='+encodeURIComponent(eventId||'')+'&tab=results&heat='+encodeURIComponent(heatId||'')+(heatId?'#heat-'+encodeURIComponent(heatId):'');
+    ? '../competition.html?event='+encodeURIComponent(eventId||'')
+    : '../competition.html?event='+encodeURIComponent(eventId||'')+'&tab=results&heat='+encodeURIComponent(heatId||'')+(heatId?'#heat-'+encodeURIComponent(heatId):'');
   location.replace(fallback);
 }
 backBtn.addEventListener('click',closeCameraAndBack);

@@ -96,10 +96,17 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
  await new Promise(r=>server.on('listening',r));let browser;try{browser=await chromium.launch({headless:true})}catch(e){server.close();throw e}
  try{
  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
-  const page=await browser.newPage({viewport});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const page=await browser.newPage({viewport,serviceWorkers:'block'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route(url=>url.hostname==='cdn.jsdelivr.net'&&url.pathname.includes('/@supabase/'),r=>r.fulfill({contentType:'application/javascript',body:'('+mock.toString()+')()'}));
   await page.route('**/app-updater.js*',r=>r.fulfill({contentType:'application/javascript',body:''}));
-  await page.goto(`http://127.0.0.1:${server.address().port}/craighouse/`);
+  const origin=`http://127.0.0.1:${server.address().port}`;
+  let classUrl, categories;
+  const openDatabase=async(hash='database')=>{classUrl=page.url();categories=await page.locator('#categoryChoices input:checked').evaluateAll(xs=>xs.map(x=>x.value));await page.goto(origin+'/craighouse/database.html#'+hash);await page.locator('#app').waitFor({state:'visible'});assert.equal(await page.locator('#classPane').isVisible(),false);assert.equal(await page.locator('#classTab').isVisible(),false)};
+  const returnToClass=async()=>{await page.goto(classUrl);await page.waitForFunction(()=>!document.getElementById('app').hidden&&!document.getElementById('app').inert);await page.locator('#categoryChoices input').evaluateAll((xs,values)=>xs.forEach(x=>x.checked=values.includes(x.value)),categories)};
+  await page.goto(origin+'/');assert.equal(await page.locator('.module').count(),3);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/class-home-'+viewport.width+'.png',fullPage:true});
+  await page.locator('.module').first().click();
+  assert.equal(await page.locator('#databaseTab').isVisible(),false);
+  assert.equal(await page.locator('#rankTab').isVisible(),false);
   await page.locator('#app').waitFor({state:'visible'});
   assert.equal(await page.locator('#gender').inputValue(),'All');
   await page.locator('#categoryChoices input[value="Y7"]').check();await page.locator('#categoryChoices input[value="Y8"]').check();
@@ -118,10 +125,10 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.locator('[data-athlete="girl"] .mark').fill('12.9');await page.evaluate(()=>testState.failSave=true);await page.click('#saveMarks');await page.waitForFunction(()=>document.getElementById('message').textContent==='Test network error');assert.equal(await page.locator('[data-athlete="girl"] .mark').inputValue(),'12.9');
   await page.evaluate(()=>testState.failSave=false);await page.click('#saveMarks');await page.waitForFunction(()=>testState.marks.length===3);await page.waitForFunction(()=>!document.getElementById('app').inert);
   await page.screenshot({path:'/tmp/class-sheet-'+viewport.width+'.png',fullPage:true});
-  await page.click('#databaseTab');await page.locator('#history tbody tr').first().waitFor();assert.equal(await page.locator('#history tbody tr').count(),2);assert.equal(await page.locator('#progress svg').count(),1);
+  await openDatabase();await page.locator('#history tbody tr').first().waitFor();assert.equal(await page.locator('#history tbody tr').count(),2);assert.equal(await page.locator('#progress svg').count(),1);
   await page.click('#rankTab');await page.selectOption('#rankSource','class');await page.selectOption('#rankCategory','Y7');await page.click('#loadRanking');await page.locator('#ranking tbody tr').first().waitFor();assert.equal(await page.locator('#ranking tbody tr').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.click('#classTab');await page.click('#sessionsBack');if(!await page.locator('#sessionForm').isVisible())await page.locator('#sessionSetup summary').click();await page.selectOption('#event','track');await page.fill('#title','Mixed track');await page.click('#createSession');
+  await returnToClass();await page.click('#sessionsBack');if(!await page.locator('#sessionForm').isVisible())await page.locator('#sessionSetup summary').click();await page.selectOption('#event','track');await page.fill('#title','Mixed track');await page.click('#createSession');
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.fill('#heatCapacity','1');await createRound(page);await page.locator('.series-tile').first().waitFor();
   assert.equal(await page.locator('.heat-card').count(),2);
   await page.screenshot({path:'/tmp/class-series-'+viewport.width+'.png',fullPage:true});
@@ -195,7 +202,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   }
   // Existing Photo Finish precision survives display rounding and metadata edits.
   await page.evaluate(()=>{testState.marks.at(-1).mark=165.678});await seriesList(page);await page.click('#refreshSeries');await page.locator('.series-tile').first().click();await page.waitForFunction(()=>!document.getElementById('app').inert);assert.equal(await page.locator('#heatList .heat-time').inputValue(),'2:45.68');await page.selectOption('#heatList .heat-timing','photo_finish');await page.locator('#heatList .save-heat').click();await page.waitForFunction(()=>!document.getElementById('app').inert);assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),165.678);
-  await page.click('#rankTab');await page.selectOption('#rankEvent','800 m');await page.selectOption('#rankCategory','Y7');await page.selectOption('#rankGender','F');await page.selectOption('#rankSource','class');await page.evaluate(()=>{window.print=()=>{window.printCalled=true}});await page.click('#printRanking');await page.waitForFunction(()=>window.printCalled);
+  await openDatabase('rank');await page.selectOption('#rankEvent','800 m');await page.selectOption('#rankCategory','Y7');await page.selectOption('#rankGender','F');await page.selectOption('#rankSource','class');await page.evaluate(()=>{window.print=()=>{window.printCalled=true}});await page.click('#printRanking');await page.waitForFunction(()=>window.printCalled);
   assert.ok((await page.locator('#rankingPrint').textContent()).includes('800 m'));assert.ok((await page.locator('#rankingPrint').textContent()).includes('2:45.68'));assert.ok((await page.locator('#rankingPrint').textContent()).includes('Y7 · Girls · Class'));
   await page.emulateMedia({media:'print'});assert.equal(await page.locator('main').isVisible(),false);assert.equal(await page.locator('#rankingPrint').isVisible(),true);
   await page.screenshot({path:'/tmp/class-ranking-print-'+viewport.width+'.png',fullPage:true});
@@ -205,7 +212,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   }
   await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);
   // Height progression with school's competition rules, independent attendance and derived best.
-  await page.click('#classTab');await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','hj');await page.selectOption('#addGender','All');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
+  await returnToClass();await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','hj');await page.selectOption('#addGender','All');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.locator('#sheetControls').isVisible(),false);
   const addHeight=async value=>{if(!await page.locator('#hjNewHeight').isVisible())await page.locator('.hj-top summary').click();await page.fill('#hjNewHeight',value);await page.click('#hjAddHeight');await page.waitForFunction(()=>!document.getElementById('app').inert)};
   const hjButton=(athlete,index,value)=>page.locator(`[data-hj-athlete="${athlete}"] [data-hj-index="${index}"][data-hj-value="${value}"]`);
@@ -221,7 +228,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await addHeight('1.30');assert.equal(await hjButton('boy',0,'O').count(),0);assert.ok((await page.locator('[data-hj-athlete="boy"]').textContent()).includes('Closed'));
   await page.selectOption('#hjHeightPicker',secondHeight);await hjButton('girl',0,'X').click();await saveHJ();assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.1);
   await page.click('#hjRefresh');await page.waitForFunction(()=>!document.getElementById('app').inert);await page.selectOption('#hjHeightPicker',firstHeight);assert.equal(await hjButton('girl',1,'O').getAttribute('aria-pressed'),'true');
-  await page.click('#databaseTab');await page.selectOption('#athletePicker','girl');await page.waitForFunction(()=>document.getElementById('historyEvent').textContent.includes('High Jump'));await page.selectOption('#historyEvent','High Jump');assert.ok((await page.locator('#history').textContent()).includes('1.1'));
+  await openDatabase();await page.selectOption('#athletePicker','girl');await page.waitForFunction(()=>document.getElementById('historyEvent').textContent.includes('High Jump'));await page.selectOption('#historyEvent','High Jump');assert.ok((await page.locator('#history').textContent()).includes('1.1'));
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');

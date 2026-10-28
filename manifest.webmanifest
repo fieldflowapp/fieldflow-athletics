@@ -1,9 +1,9 @@
 {
   "name": "FieldFlow Athletics",
   "short_name": "FF Athletics",
-  "description": "FieldFlow Athletics Admin",
+  "description": "Classes, competitions and athlete performance",
   "id": "/fieldflow-athletics/?app=athletics-v3",
-  "start_url": "/fieldflow-athletics/?app=athletics-v3&build=31",
+  "start_url": "/fieldflow-athletics/?app=athletics-v3&build=40",
   "scope": "/fieldflow-athletics/",
   "display": "standalone",
   "orientation": "any",
