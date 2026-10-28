@@ -74,3 +74,4 @@ fieldset{border:1px solid var(--line);border-radius:10px;margin:0 0 16px;padding
 }
 @media print{#app>nav,.workspace-toolbar{display:none!important}}
 @media(max-width:800px){.heat-focus #sessionSummary,.heat-focus #sessionSteps,.heat-focus #activityControls,.heat-focus .workspace-toolbar{display:none}.heat-focus #sessionWorkspace{padding:0}.heat-focus #heatList .heat-card{scroll-margin-top:115px}}
+@media(max-width:800px){.session-open:not(.event-options) #sessionSummary p{display:none}#roundToolbar{margin:8px 0}#roundSetup{margin:8px 0}#seriesDirectory:focus{outline:none}}

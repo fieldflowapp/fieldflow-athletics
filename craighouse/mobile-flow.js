@@ -47,4 +47,8 @@ const originalRenderActivityControls=renderActivityControls;
 renderActivityControls=function(){originalRenderActivityControls();document.body.classList.remove('event-options');$('eventSettingsBtn').setAttribute('aria-expanded','false')};
 $('attendanceStepBtn').textContent='Attendance';$('recordStepBtn').textContent='Record';$('summaryStepBtn').textContent='Summary';
 $('classTab').textContent='Classes';$('databaseTab').textContent='Athletes';$('rankTab').textContent='Rankings';
+// Put the series directory before secondary display and lane-editing options.
+$('trackControls').prepend($('roundToolbar'));
+$('roundToolbar').after($('roundSetup'));
+$('trackControls').append($('trackDisplay'),$('seriesEditor'));
 syncWorkspace();run(boot);
