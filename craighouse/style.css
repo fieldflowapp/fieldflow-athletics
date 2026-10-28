@@ -31,6 +31,7 @@ fieldset{border:1px solid var(--line);border-radius:10px;margin:0 0 16px;padding
 #rankingPrint{display:none}
 @page{size:A4 landscape;margin:12mm}
 @media print{
+ :root{color-scheme:light}
  html,body{background:white!important;color:black!important;font-family:Arial,sans-serif}
  body.ranking-print>header,body.ranking-print>main,body.ranking-print>script{display:none!important}
  body.ranking-print #rankingPrint{display:block!important;background:white;color:black;font-size:10pt}
