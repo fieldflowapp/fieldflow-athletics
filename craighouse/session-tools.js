@@ -74,6 +74,7 @@ $('printRanking').onclick=async()=>{
  if(S.busy)return;S.rankSnapshot=null;await ranking();const snapshot=S.rankSnapshot;if(!snapshot)return;
  const date=new Date().toLocaleString('en-GB',{timeZone:'America/Santiago'});
  $('rankingPrint').innerHTML=`<h1>Craighouse · Rankings & Best Marks</h1><p class="print-context"><b>${esc(snapshot.event)}</b> · ${esc(snapshot.category)} · ${esc(snapshot.gender)} · ${esc(snapshot.source)}</p><p>Generated ${esc(date)} · Chile · Times shown as m:ss.cc for 400 / 600 / 800 m and relays.</p>${snapshot.html}`;
- window.print();
+ document.body.classList.add('ranking-print');window.print();
 };
+window.addEventListener('afterprint',()=>document.body.classList.remove('ranking-print'));
 run(boot);

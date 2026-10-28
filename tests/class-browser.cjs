@@ -168,7 +168,7 @@ const mock=()=>{
    await page.evaluate(()=>{const tbody=document.querySelector('#rankingPrint tbody'),row=tbody.firstElementChild;for(let i=0;i<150;i++)tbody.append(row.cloneNode(true))});
    const pdf=await page.pdf({path:'/tmp/class-ranking-a4.pdf',preferCSSPageSize:true,printBackground:true});const text=pdf.toString('latin1'),box=/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(text);assert.ok(box);assert.ok(Math.abs(Number(box[1])-841.89)<2);assert.ok(Math.abs(Number(box[2])-595.28)<2);assert.ok((text.match(/\/Type \/Page\b/g)||[]).length>1);
   }
-  await page.emulateMedia({media:'screen'});assert.deepEqual(errors,[]);await page.close();
+  await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
  }finally{await browser.close();server.close()}
