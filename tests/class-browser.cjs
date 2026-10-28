@@ -205,7 +205,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   }
   await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);
   // Height progression with school's competition rules, independent attendance and derived best.
-  await page.click('#classTab');await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','hj');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
+  await page.click('#classTab');await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','hj');await page.selectOption('#addGender','All');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.locator('#sheetControls').isVisible(),false);
   const addHeight=async value=>{if(!await page.locator('#hjNewHeight').isVisible())await page.locator('.hj-top summary').click();await page.fill('#hjNewHeight',value);await page.click('#hjAddHeight');await page.waitForFunction(()=>!document.getElementById('app').inert)};
   const hjButton=(athlete,index,value)=>page.locator(`[data-hj-athlete="${athlete}"] [data-hj-index="${index}"][data-hj-value="${value}"]`);

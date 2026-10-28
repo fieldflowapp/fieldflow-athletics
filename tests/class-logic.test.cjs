@@ -32,6 +32,7 @@ test('high jump uses school competition rules and selects highest cleared height
  assert.equal(L.isHighJump({code:'HJ'}),true);assert.equal(L.isHighJump({name:'High Jump'}),true);assert.equal(L.isHighJump({name:'Long Jump'}),false);
  assert.deepEqual(L.highJumpState(heights,{a:['X','X',''],b:['X','O','']}),{best:1.2,eliminatedAt:null});
  assert.deepEqual(L.highJumpState(heights,{a:['-','',''],b:['O','',''],c:['X','X','X']}),{best:1.2,eliminatedAt:3});
+ assert.deepEqual(L.highJumpEdit({a:['X','X','O']},'a',0,'X'),{a:['X','X','O']});
  assert.deepEqual(L.highJumpEdit({a:['X','X','O']},'a',0,'O'),{a:['O','','']});
  assert.throws(()=>L.highJumpEdit({},'a',1,'O'));assert.throws(()=>L.highJumpEdit({a:['X','','']},'a',1,'-'));
 });

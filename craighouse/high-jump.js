@@ -6,7 +6,6 @@ function renderHighJump(){
  const athletes=S.athletes.filter(a=>S.attendance.some(x=>x.athlete_id===a.id&&x.present&&x.available!==false)||S.hjCards.some(c=>c.athlete_id===a.id));
  $('highJumpControls').innerHTML=`<div class="hj-top"><label>Current height<select id="hjHeightPicker">${S.hjHeights.map(h=>option(h.id,Number(h.height_m).toFixed(2)+' m')).join('')}</select></label><details ${height?'':'open'}><summary>Add height</summary><div class="filters"><label>Height (m)<input id="hjNewHeight" inputmode="decimal" placeholder="1.20"></label><button id="hjAddHeight">Add height</button></div></details></div><p class="muted">O = clear · X = miss · – = pass on attempt 1. Three X at the same height = eliminated. Best cleared height is saved automatically with the attempts.</p><div id="hjAthletes">${height?athletes.map(a=>{
  const trials=hjTrials(a.id),state=L.highJumpState(S.hjHeights,trials),values=trials[height.id]||['','',''];const closed=state.eliminatedAt!==null&&height.sequence_no>state.eliminatedAt;
- const saved=S.hjCards.find(c=>c.athlete_id===a.id);
  return `<article class="hj-athlete" data-hj-athlete="${a.id}"><div class="hj-athlete-heading"><div><b>${esc(name(a))}</b><small>${esc(a.level)} · ${a.gender==='F'?'Female':'Male'} · ${esc(a.color)}</small></div><span class="hj-best">Best ${state.best==null?'—':state.best.toFixed(2)+' m'}<small>${S.hjDraft.has(a.id)?'Unsaved':'Saved'}</small></span></div>${closed?'<p class="hj-eliminated">Closed · eliminated at an earlier height</p>':`<div class="hj-attempts">${values.map((value,i)=>{
  const done=i>0&&values.slice(0,i).some(v=>['O','-'].includes(v)),waiting=i>0&&values[i-1]!=='X';
  return `<div><span class="hj-attempt-label">Attempt ${i+1}</span>${done?'<p class="muted">Done</p>':waiting?'<p class="muted">Waiting</p>':`<div class="hj-buttons">${['O','X',...(i===0?['-']:[])].map(v=>`<button data-hj-index="${i}" data-hj-value="${v}" aria-label="Attempt ${i+1}: ${v==='O'?'clear':v==='X'?'miss':'pass'}" aria-pressed="${value===v}" class="${value===v?'chosen-'+(v==='O'?'clear':v==='X'?'miss':'pass'):''}">${v==='-'?'–':v}</button>`).join('')}</div>${value?`<button class="hj-undo" data-hj-index="${i}" data-hj-value="">Undo</button>`:''}`}</div>`;
@@ -20,7 +19,9 @@ function renderHighJump(){
  document.querySelectorAll('[data-hj-value]').forEach(button=>button.onclick=()=>{
  const id=button.closest('[data-hj-athlete]').dataset.hjAthlete,index=Number(button.dataset.hjIndex),value=button.dataset.hjValue;
  const previous=S.hjDraft.get(id),saved=S.hjCards.find(c=>c.athlete_id===id);
- S.hjDraft.set(id,{version:previous?.version??saved?.version??0,trials:L.highJumpEdit(hjTrials(id),S.hjHeight,index,value)});setDirty();
+ const trials=L.highJumpEdit(hjTrials(id),S.hjHeight,index,value),state=L.highJumpState(S.hjHeights,trials);
+ if(state.eliminatedAt!==null&&S.hjHeights.some(h=>h.sequence_no>state.eliminatedAt&&(trials[h.id]||[]).some(Boolean))){notice('Later heights already have attempts. Undo those results before recording elimination at this height.','error');return}
+ S.hjDraft.set(id,{version:previous?.version??saved?.version??0,trials});setDirty();
  const y=window.scrollY;renderHighJump();window.scrollTo(0,y);
  });
 }
