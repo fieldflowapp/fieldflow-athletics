@@ -26,3 +26,12 @@ test('400/600/800 and relays use clock display while short track and field keep 
  assert.equal(L.usesClock({name:'100 m',discipline:'track'}),false);assert.equal(L.usesClock({name:'Long Jump',discipline:'field'}),false);
  const rows=[{athlete_id:'a',event_name:'800 m',category:'Y7',gender:'F',unit:'s',status:'valid',mark:L.parseTime('2:05.23')},{athlete_id:'a',event_name:'800 m',category:'Y7',gender:'F',unit:'s',status:'valid',mark:L.parseTime('1:59.99')}];assert.equal(L.bestMarks(rows)[0].mark,119.99);
 });
+
+test('high jump uses school competition rules and selects highest cleared height',()=>{
+ const heights=[{id:'a',height_m:1.1,sequence_no:1},{id:'b',height_m:1.2,sequence_no:2},{id:'c',height_m:1.3,sequence_no:3}];
+ assert.equal(L.isHighJump({code:'HJ'}),true);assert.equal(L.isHighJump({name:'High Jump'}),true);assert.equal(L.isHighJump({name:'Long Jump'}),false);
+ assert.deepEqual(L.highJumpState(heights,{a:['X','X',''],b:['X','O','']}),{best:1.2,eliminatedAt:null});
+ assert.deepEqual(L.highJumpState(heights,{a:['-','',''],b:['O','',''],c:['X','X','X']}),{best:1.2,eliminatedAt:3});
+ assert.deepEqual(L.highJumpEdit({a:['X','X','O']},'a',0,'O'),{a:['O','','']});
+ assert.throws(()=>L.highJumpEdit({},'a',1,'O'));assert.throws(()=>L.highJumpEdit({a:['X','','']},'a',1,'-'));
+});

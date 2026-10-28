@@ -4,7 +4,7 @@ const timingLabels={unspecified:'Unspecified',manual:'Manual stopwatch',photo_fi
 function timingOptions(value){return Object.entries(timingLabels).map(([k,v])=>`<option value="${k}" ${value===k?'selected':''}>${v}</option>`).join('')}
 function markConditionInputs(m){return `<details class="mark-conditions"><summary>Mark conditions</summary><label>Timing<select class="mark-timing">${timingOptions(m.timing_method||S.session.timing_method||'not_applicable')}</select></label><label>Implement (kg)<input class="mark-weight" type="number" min="0.01" max="100" step="0.01" value="${esc(('implement_kg' in m?m.implement_kg:S.session.implement_kg)??'')}"></label><label>Conditions<input class="mark-condition" maxlength="500" value="${esc(m.conditions??S.session.conditions??'')}"></label></details>`}
 function readMarkConditions(row){const weight=row.querySelector('.mark-weight').value;return {timing_method:row.querySelector('.mark-timing').value,implement_kg:weight===''?null:Number(weight),conditions:row.querySelector('.mark-condition').value}}
-function clearClassDrafts(){S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.configDirty=false;S.attendanceDirty=false;setDirty()}
+function clearClassDrafts(){S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.hjDraft.clear();S.configDirty=false;S.attendanceDirty=false;setDirty()}
 function renderActivityControls(){
  document.querySelectorAll('#activityControls details').forEach(el=>el.open=false);
  $('activityPicker').innerHTML=S.activities.map(s=>{const e=S.events.find(e=>e.id===s.template_event_id);return option(s.id,`${e?.name||'Event'} · ${s.gender==='All'?'All Genders':s.gender==='F'?'Female':'Male'}`)}).join('');$('activityPicker').value=S.session.id;

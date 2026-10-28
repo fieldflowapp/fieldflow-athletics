@@ -6,12 +6,13 @@ const root=path.resolve(__dirname,'..');
 const mock=()=>{
  const athletes=[{id:'girl',first_name:'Student',last_name:'One',gender:'F',level:'Y7',color:'Blue',external_code:'TEST1',active:true},{id:'boy',first_name:'Student',last_name:'Two',gender:'M',level:'Y8',color:'Red',external_code:'TEST2',active:true},{id:'absent',first_name:'Absent',last_name:'Three',gender:'M',level:'Y8',color:'White',external_code:'TEST3',active:true}];
  const events=[{id:'event',name:'Long Jump',discipline:'field',category:'Y8'},{id:'track',name:'100 m',discipline:'track',category:'Y8',start_mode:'lanes'},{id:'relay',name:'Relay 4x100 m',discipline:'relay',category:'Y8'}];
+ events.push({id:'hj',name:'High Jump',code:'HJ',discipline:'field',category:'Y7'});
  for(const distance of [400,600,800])events.push({id:'track'+distance,name:distance+' m',discipline:'track',category:'Y7',start_mode:'mass_start'});
- const db=JSON.parse(localStorage.getItem('test-db')||'{"sessions":[],"marks":[],"attendance":[],"heats":[],"entries":[],"sequence":0,"teams":[],"legs":[],"audit":[]}');const {sessions,marks,attendance,heats,entries,teams,legs,audit}=db;
+ const db=JSON.parse(localStorage.getItem('test-db')||'{"sessions":[],"marks":[],"attendance":[],"heats":[],"entries":[],"sequence":0,"teams":[],"legs":[],"audit":[],"hjHeights":[],"hjCards":[]}');const {sessions,marks,attendance,heats,entries,teams,legs,audit,hjHeights,hjCards}=db;
  const persist=()=>localStorage.setItem('test-db',JSON.stringify(db));const next=prefix=>prefix+'-'+(++db.sequence);
  const sheet=()=>entries.map(e=>{const a=athletes.find(a=>a.id===e.athlete_id),m=marks.find(m=>m.session_id===e.session_id&&m.athlete_id===e.athlete_id&&m.attempt_no===e.round_no);return {...e,first_name:a.first_name,last_name:a.last_name,gender:a.gender,level:a.level,color:a.color,official_time:m?.mark??null,status:m?(m.status==='valid'?'finished':m.status):'scheduled',notes:m?.notes||''}});
  function saveMarks(sid,attempt,rows){const session=sessions.find(s=>s.id===sid);const result=rows.map(r=>{let m=marks.find(m=>m.athlete_id===r.athlete_id&&m.session_id===sid&&m.attempt_no===attempt);const previous=m?structuredClone(m):null;const a=athletes.find(a=>a.id===r.athlete_id);if(!m){m={id:next('mark'),session_id:sid,attempt_no:attempt,category:a.level,gender:a.gender,conditions:session.conditions||'',timing_method:session.timing_method||'unspecified',implement_kg:session.implement_kg??null};marks.push(m)}Object.assign(m,r);if(previous&&JSON.stringify(previous)!==JSON.stringify(m))audit.push({id:next('audit'),session_id:sid,athlete_id:r.athlete_id,changed_at:new Date().toISOString(),changed_by:'teacher',actor_label:'Teacher',before_value:previous,after_value:structuredClone(m)});return m});persist();return structuredClone(result)}
- window.testState={...db,failSave:false};window.addEventListener('storage',e=>{if(e.key!=='test-db')return;const fresh=JSON.parse(e.newValue);for(const key of ['sessions','marks','attendance','heats','entries','teams','legs','audit'])db[key].splice(0,db[key].length,...fresh[key]);db.sequence=fresh.sequence});
+ window.testState={...db,failSave:false};window.addEventListener('storage',e=>{if(e.key!=='test-db')return;const fresh=JSON.parse(e.newValue);for(const key of ['sessions','marks','attendance','heats','entries','teams','legs','audit','hjHeights','hjCards'])db[key].splice(0,db[key].length,...fresh[key]);db.sequence=fresh.sequence});
  class Query{
   constructor(table){this.table=table;this.filters=[];this.start=0;this.end=499}
   select(){return this}eq(k,v){this.filters.push(r=>k==='tournament_id'||r[k]===v);return this}in(k,v){this.filters.push(r=>v.includes(r[k]));return this}order(){return this}range(a,b){this.start=a;this.end=b;return this}single(){this.one=true;return this}insert(value){this.value=value;return this}update(value){this.changes=value;return this}
@@ -20,6 +21,8 @@ const mock=()=>{
    else if(this.table==='athletics_athletes')rows=athletes;
    else if(this.table==='athletics_events')rows=events;
    else if(this.table==='athletics_class_sessions'){if(this.value){sessions.push({id:next('session'),attendance_recorded:false,...this.value});persist();rows=[sessions.at(-1)]}else {rows=sessions;if(this.changes){rows=rows.filter(r=>this.filters.every(fn=>fn(r)));rows.forEach(r=>Object.assign(r,this.changes));persist()}}}
+   else if(this.table==='athletics_class_hj_heights'){if(this.value){hjHeights.push({id:next('height'),...this.value});persist();rows=[hjHeights.at(-1)]}else rows=hjHeights}
+   else if(this.table==='athletics_class_hj_cards')rows=hjCards;
    else if(this.table==='athletics_class_relay_teams')rows=teams;
    else if(this.table==='athletics_class_relay_legs')rows=legs;
    else if(this.table==='athletics_class_mark_audit')rows=audit;
@@ -36,6 +39,13 @@ const mock=()=>{
  window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:{user:{id:'teacher'}}}}),onAuthStateChange:()=>{},signOut:async()=>{}},from:t=>new Query(t),rpc:async(fn,p)=>{
   if(fn==='is_athletics_admin')return {data:true};
   if(window.testState.failSave)return {error:{message:'Test network error'}};
+  if(fn==='athletics_save_class_hj'){
+   let card=hjCards.find(c=>c.session_id===p.p_session_id&&c.athlete_id===p.p_athlete_id);
+   if((card?.version||0)!==p.p_version)return {error:{message:'Stale high jump card'}};
+   if(!card){card={session_id:p.p_session_id,athlete_id:p.p_athlete_id,version:0,mark_attempt:Math.max(0,...marks.filter(m=>m.session_id===p.p_session_id&&m.athlete_id===p.p_athlete_id).map(m=>m.attempt_no))+1};hjCards.push(card)}
+   card.trials=structuredClone(p.p_trials);card.version++;card.best_height=Math.max(0,...hjHeights.filter(h=>h.session_id===p.p_session_id&&card.trials[h.id]?.includes('O')).map(h=>h.height_m))||null;
+   saveMarks(card.session_id,card.mark_attempt,[{athlete_id:card.athlete_id,mark:card.best_height,status:card.best_height?'valid':JSON.stringify(card.trials).includes('X')?'foul':'pass',timing_method:'not_applicable',notes:'High jump · best cleared height'}]);persist();return {data:structuredClone(card)};
+  }
   if(fn==='athletics_save_class_marks')return {data:saveMarks(p.p_session_id,p.p_attempt,p.p_marks)};
   if(fn==='athletics_add_class_activity'){
    const selected=sessions.find(s=>s.id===p.p_session_id),root=sessions.find(s=>s.id===(selected.parent_session_id||selected.id));const child={...root,id:next('session'),parent_session_id:root.id,template_event_id:p.p_event_id,gender:p.p_gender,conditions:p.p_conditions,timing_method:p.p_timing,implement_kg:p.p_implement,attendance_recorded:false};sessions.push(child);persist();return {data:structuredClone(child)};
@@ -193,7 +203,26 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
    await page.evaluate(()=>{const tbody=document.querySelector('#rankingPrint tbody'),row=tbody.firstElementChild;for(let i=0;i<150;i++)tbody.append(row.cloneNode(true))});
    const pdf=await page.pdf({path:'/tmp/class-ranking-a4.pdf',preferCSSPageSize:true,printBackground:true});const text=pdf.toString('latin1'),box=/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(text);assert.ok(box);assert.ok(Math.abs(Number(box[1])-841.89)<2);assert.ok(Math.abs(Number(box[2])-595.28)<2);assert.ok((text.match(/\/Type \/Page\b/g)||[]).length>1);
   }
-  await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);await page.close();
+  await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);
+  // Height progression with school's competition rules, independent attendance and derived best.
+  await page.click('#classTab');await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','hj');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
+  await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.locator('#sheetControls').isVisible(),false);
+  const addHeight=async value=>{if(!await page.locator('#hjNewHeight').isVisible())await page.locator('.hj-top summary').click();await page.fill('#hjNewHeight',value);await page.click('#hjAddHeight');await page.waitForFunction(()=>!document.getElementById('app').inert)};
+  const hjButton=(athlete,index,value)=>page.locator(`[data-hj-athlete="${athlete}"] [data-hj-index="${index}"][data-hj-value="${value}"]`);
+  const saveHJ=async()=>{await page.click('#hjSave');await page.waitForFunction(()=>!document.getElementById('app').inert)};
+  await addHeight('1.10');const firstHeight=await page.locator('#hjHeightPicker').inputValue();
+  await hjButton('girl',0,'X').click();await hjButton('girl',1,'O').click();assert.equal(await hjButton('girl',2,'X').count(),0);
+  await hjButton('boy',0,'-').click();assert.equal(await hjButton('boy',1,'X').count(),0);
+  await page.evaluate(()=>testState.failSave=true);await saveHJ();assert.equal(await page.locator('[data-hj-athlete="girl"] [aria-pressed="true"]').count(),2);assert.ok((await page.locator('#hjSaveState').textContent()).includes('unsaved'));
+  await page.evaluate(()=>testState.failSave=false);await saveHJ();assert.equal(await page.evaluate(()=>testState.hjCards.find(c=>c.athlete_id==='girl').best_height),1.1);
+  await addHeight('1.20');const secondHeight=await page.locator('#hjHeightPicker').inputValue();await hjButton('girl',0,'O').click();await hjButton('boy',0,'X').click();await hjButton('boy',1,'X').click();await hjButton('boy',2,'X').click();await saveHJ();
+  const hjSession=await page.locator('#activityPicker').inputValue();assert.equal(await page.evaluate(s=>testState.marks.filter(m=>m.session_id===s&&m.athlete_id==='girl').length,hjSession),1);assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.2);
+  await page.screenshot({path:'/tmp/class-high-jump-'+viewport.width+'.png',fullPage:true});
+  await addHeight('1.30');assert.equal(await hjButton('boy',0,'O').count(),0);assert.ok((await page.locator('[data-hj-athlete="boy"]').textContent()).includes('Closed'));
+  await page.selectOption('#hjHeightPicker',secondHeight);await hjButton('girl',0,'X').click();await saveHJ();assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.1);
+  await page.click('#hjRefresh');await page.waitForFunction(()=>!document.getElementById('app').inert);await page.selectOption('#hjHeightPicker',firstHeight);assert.equal(await hjButton('girl',1,'O').getAttribute('aria-pressed'),'true');
+  await page.click('#databaseTab');await page.selectOption('#athletePicker','girl');await page.waitForFunction(()=>document.getElementById('historyEvent').textContent.includes('High Jump'));await page.selectOption('#historyEvent','High Jump');assert.ok((await page.locator('#history').textContent()).includes('1.1'));
+  assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
  }finally{await browser.close();server.close()}
