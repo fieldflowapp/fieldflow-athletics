@@ -16,3 +16,13 @@ test('attendance filters combine gender, colour and search within activity eligi
  assert.equal(L.attendanceMatches(girl,{...session,categories:['Y8']}),false);
  assert.ok(L.attendanceMatches(girl,session,{query:' ANA '}));
 });
+test('clock times convert to numeric seconds, accept decimal comma, and validate seconds/hundredths',()=>{
+ assert.equal(L.parseTime('1:23.45'),83.45);assert.equal(L.parseTime('2:05,07'),125.07);assert.equal(L.parseTime('83.456'),83.456);assert.equal(L.parseTime(''),null);
+ for(const value of ['1:60.00','1:99.12','1:2.34','1:23.456','-1:20.00','0:00.00','1:20:30'])assert.throws(()=>L.parseTime(value));
+ assert.equal(L.formatTime(59.999),'1:00.00');assert.equal(L.formatTime(83.456),'1:23.46');assert.equal(L.formatTime(null),'');assert.equal(L.formatTime(125.07),'2:05.07');
+});
+test('400/600/800 and relays use clock display while short track and field keep existing units',()=>{
+ for(const name of ['400 m','600m','800 mts'])assert.ok(L.usesClock({name,discipline:'track'}));assert.ok(L.usesClock({name:'4 x 100 m',discipline:'relay'}));
+ assert.equal(L.usesClock({name:'100 m',discipline:'track'}),false);assert.equal(L.usesClock({name:'Long Jump',discipline:'field'}),false);
+ const rows=[{athlete_id:'a',event_name:'800 m',category:'Y7',gender:'F',unit:'s',status:'valid',mark:L.parseTime('2:05.23')},{athlete_id:'a',event_name:'800 m',category:'Y7',gender:'F',unit:'s',status:'valid',mark:L.parseTime('1:59.99')}];assert.equal(L.bestMarks(rows)[0].mark,119.99);
+});

@@ -54,3 +54,9 @@ Apply `database/craighouse-sessions-v3.sql` after v1 and v2. Validate with `test
 ### v35 — attendance owned by each event
 
 Each additional activity starts with `attendance_recorded=false` and an empty list. Its teacher must save attendance before results or heats can be recorded. Saving attendance only updates that activity, including the root/first event; it never propagates to siblings. Existing recorded attendance and marks are retained. Gender, colour and name/ID filters combine; Select/Clear visible only affect matching students and retain hidden selections. Activity switching is available while taking attendance. Apply `database/craighouse-activity-attendance-v35.sql` after v3. The current database/browser tests verify this independent attendance model.
+
+### v36 — printable rankings and clock times
+
+Rankings include a Print button that refreshes the selected filters and prints only the results, with event/category/gender/source context. Print CSS uses A4 landscape, repeated table headers and unbounded table height for multiple pages. The browser suite verifies actual PDF page dimensions and pagination.
+
+400 m, 600 m, 800 m and relay activities default to `m:ss.cc`, with a seconds-format option. Inputs accept `1:23.45` or total seconds. History, rankings, summaries and chart labels use clock format for those events. Storage remains numeric seconds; viewing rounded hundredths or changing timing metadata preserves the exact original Photo Finish value.

@@ -27,3 +27,20 @@ fieldset{border:1px solid var(--line);border-radius:10px;margin:0 0 16px;padding
  .session-review-table td:nth-child(3)::before{content:'Results';display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
  .session-review-table td:nth-child(4)::before{content:'Best marks';display:block;color:var(--muted);font-size:11px;margin-bottom:5px}
 }
+
+#rankingPrint{display:none}
+@page{size:A4 landscape;margin:12mm}
+@media print{
+ html,body{background:white!important;color:black!important;font-family:Arial,sans-serif}
+ body>header,body>main,body>script{display:none!important}
+ #rankingPrint{display:block!important;background:white;color:black;font-size:10pt}
+ #rankingPrint h1{font-size:20pt;margin:0 0 4mm}#rankingPrint h2{font-size:13pt;margin:6mm 0 2mm;break-after:avoid}
+ #rankingPrint p,#rankingPrint small{color:#333;letter-spacing:normal}#rankingPrint p{margin:2mm 0;line-height:1.3}
+ #rankingPrint .print-context{font-size:12pt}
+ #rankingPrint .tablewrap{overflow:visible;max-height:none;height:auto}
+ #rankingPrint table{width:100%;border-collapse:collapse;font-size:10pt;table-layout:auto}
+ #rankingPrint thead{display:table-header-group}#rankingPrint tr{break-inside:avoid}
+ #rankingPrint td,#rankingPrint th{padding:2.5mm;border-bottom:1px solid #aaa;color:black;min-width:0}
+ #rankingPrint th{position:static;background:#eee;letter-spacing:normal;font-size:9pt}
+ #rankingPrint td:first-child{width:14mm}#rankingPrint th:nth-child(2){width:35%}
+}
