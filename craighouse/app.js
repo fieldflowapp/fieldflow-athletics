@@ -12,7 +12,7 @@ function proceed(){return !S.busy&&(!S.dirty||confirm('Discard unsaved class res
 window.ffCanUpdate=()=>!S.dirty&&!S.busy&&!S.photoOpen;
 window.addEventListener('beforeunload',e=>{if(S.dirty||S.busy||S.photoOpen){e.preventDefault();e.returnValue=''}});
 async function run(fn){if(S.busy)return;S.busy=true;$('app').inert=true;document.querySelectorAll('button').forEach(b=>b.disabled=true);try{await fn()}catch(e){notice(e.message,'error')}finally{S.busy=false;$('app').inert=false;document.querySelectorAll('button').forEach(b=>b.disabled=false)}}
-function tab(mode,initial=false){if(!initial&&!proceed())return;S.dirty=false;S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.attendanceDirty=false;S.configDirty=false;S.attendanceSelection=new Set(S.attendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));for(const key of ['class','database','rank']){$(key+'Pane').hidden=key!==mode;$(key+'Tab').classList.toggle('active',key===mode)}if(mode==='database')loadHistory();if(mode==='class'&&S.session)showSessionStep(S.session.attendance_recorded?'record':'attendance');location.hash=mode}
+function tab(mode,initial=false){if(!initial&&!proceed())return;S.dirty=false;S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.attendanceDirty=false;S.configDirty=false;S.attendanceSelection=new Set(S.attendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));for(const key of ['class','database','rank']){$(key+'Pane').hidden=key!==mode;$(key+'Tab').classList.toggle('active',key===mode)}if(mode==='database')loadHistory();if(mode==='class'&&S.session)showSessionStep(S.session.attendance_recorded?'record':'attendance');location.hash=mode;if(typeof syncWorkspace==='function')syncWorkspace();window.scrollTo(0,0)}
 function eventForSession(){return S.events.find(e=>e.id===S.session?.template_event_id)}
 function selectedCategories(){return [...document.querySelectorAll('#categoryChoices input:checked')].map(x=>x.value)}
 function updateGenderOptions(){const e=S.events.find(e=>e.id===$('event').value),old=$('gender').value;const relay=e?.discipline==='relay';$('gender').innerHTML=(relay?'':option('All','All Genders'))+option('M','Male')+option('F','Female');$('gender').value=relay?(old==='F'?'F':'M'):(old||'All')}
@@ -45,7 +45,7 @@ async function loadSessionData(){
  S.present=new Set(S.attendance.filter(x=>x.present).map(x=>x.athlete_id));S.attendanceSelection=new Set(S.attendance.filter(x=>x.present&&x.available!==false).map(x=>x.athlete_id));
 }
 async function openSession(s){
- const previous=S.session;S.session=s;try{await loadSessionData()}catch(e){S.session=previous;throw e}
+ const previous=S.session;S.session=s;S.selectedHeat=null;S.heatViewKey=null;S.sessionHome=false;try{await loadSessionData()}catch(e){S.session=previous;throw e}
  S.attempt=1;S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.dirty=false;S.attendanceDirty=false;S.configDirty=false;$('attempt').value=1;$('relayAttempt').value=1;$('sessionPicker').value=S.root.id;
  const event=eventForSession();$('trackTimeFormat').value=L.usesClock(event)?'clock':'seconds';$('relayTimeFormat').value='clock';S.trackFormat=$('trackTimeFormat').value;S.relayFormat='clock';$('sessionSummary').innerHTML=`<h2>${esc(s.title)}</h2><p>${esc(s.session_date)} · ${esc(event.name)} · ${esc(s.categories?.join(' + ')||s.category)} · <b>${s.gender==='All'?'All Genders':s.gender==='F'?'Female':'Male'}</b> · ${esc(s.source)}<br>${esc(s.conditions)}</p>`;
  $('markHeading').textContent='Distance / height (m)';$('sessionSteps').hidden=false;if(matchMedia('(max-width:800px)').matches)$('sessionSetup').open=false;
@@ -56,6 +56,7 @@ async function openSession(s){
  const url=new URL(location.href);url.searchParams.set('session',s.id);history.replaceState(null,'',url);
 }
 function showSessionStep(step){
+ S.step=step;if(typeof syncWorkspace==='function')syncWorkspace();
  $('summaryPane').hidden=step!=='summary';$('activityControls').hidden=step==='summary';$('summaryStepBtn').classList.toggle('active',step==='summary');$('attendancePane').hidden=step!=='attendance';for(const id of ['trackControls','relayControls','sheetControls'])$(id).hidden=true;
  $('attendanceStepBtn').classList.toggle('active',step==='attendance');$('recordStepBtn').classList.toggle('active',step==='record');
  if(step==='summary'){renderSessionReview();return}if(S.root.closed_at){showSessionStep('summary');notice('Session closed. Reopen it from the summary to make changes.');return}
@@ -105,13 +106,14 @@ function renderHeats(){
  return `<article class="heat-card" id="class-heat-${h.id}" tabindex="-1"><h3>Series ${h.heat_number} · ${h.gender==='All'?'Mixed':h.gender==='F'?'Female':'Male'} <small>${esc(h.status)}</small></h3>${entries.length?`<a class="photo-link" data-class-heat="${h.id}" href="${href}">Open Photo Finish</a>`:'<p class="muted">No participants selected for this series in this round.</p>'}<div class="heat-runners">${entries.map(en=>{const d=S.heatDraft.get(en.id);return `<div class="heat-runner" data-heat-entry="${en.id}"><div><b>Lane ${en.lane} · ${esc(en.last_name)}, ${esc(en.first_name)}</b><small>${esc(en.level)} · ${en.gender==='F'?'Female':'Male'} · ${esc(en.color)}</small></div><label>Status<select class="heat-status">${['scheduled','finished','dns','dnf','dq'].map(v=>`<option value="${v}" ${v===(d?.status||en.status)?'selected':''}>${v.toUpperCase()}</option>`).join('')}</select></label>${timeInput('heat-time',d?d.official_time:en.official_time,!!d,$('trackTimeFormat').value)}<label>Timing<select class="heat-timing">${timingOptions(d?.timing_method||S.marks.find(m=>m.athlete_id===en.athlete_id&&m.attempt_no===en.round_no)?.timing_method||S.session.timing_method||'manual')}</select></label></div>`}).join('')}</div><div class="filters"><button class="save-heat primary" data-heat="${h.id}">Save times</button><button class="complete-heat" data-heat="${h.id}">Complete series</button></div></article>`
  }).join('')||'<p>No series yet. Create a round from the present students.</p>';
  renderSeriesEditor();
+ if(typeof renderSeriesNavigation==='function')renderSeriesNavigation();
  document.querySelectorAll('.save-heat').forEach(b=>b.onclick=()=>saveHeat(b.dataset.heat,false));document.querySelectorAll('.complete-heat').forEach(b=>b.onclick=()=>saveHeat(b.dataset.heat,true));
  document.querySelectorAll('.photo-link').forEach(a=>a.onclick=e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();if(proceed())openClassPhoto(a)});
 }
 async function generateHeats(){if(!proceed())return;await run(async()=>{
  const capacity=Number($('heatCapacity').value),count=Number($('heatCount').value);if(!Number.isInteger(capacity)||capacity<1||capacity>1000||!Number.isInteger(count)||count<0)throw Error('Choose valid series settings.');
  const rows=await checked(sb.rpc('athletics_generate_class_heats',{p_session_id:S.session.id,p_mode:$('heatMode').value,p_capacity:capacity,p_heat_count:count,p_athletes:[...S.roundSelection]}));
- S.round=rows[0].round_no;S.heatDraft.clear();await loadSessionData();setDirty();renderHeats();notice(`${rows.length} series ready in round ${S.round}. Existing assignments and previous results are preserved.`,'success');
+ S.round=rows[0].round_no;S.selectedHeat=null;$('roundSetup').open=false;S.heatDraft.clear();await loadSessionData();setDirty();renderHeats();notice(`${rows.length} series ready in round ${S.round}. Existing assignments and previous results are preserved.`,'success');
 })}
 function editHeat(e){const row=e.target.closest('[data-heat-entry]');if(!row)return;const status=row.querySelector('.heat-status');const input=row.querySelector('.heat-time');if(e.target===input&&input.value.trim()&&status.value==='scheduled')status.value='finished';if(['dns','dnf','dq'].includes(status.value))input.value='';S.heatDraft.set(row.dataset.heatEntry,{status:status.value,official_time:timeInputValue(input),timing_method:row.querySelector('.heat-timing').value});setDirty()}
 async function saveHeat(id,complete){await run(async()=>{

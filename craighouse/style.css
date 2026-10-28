@@ -47,3 +47,30 @@ fieldset{border:1px solid var(--line);border-radius:10px;margin:0 0 16px;padding
 }
 
 #classPhotoDialog{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;padding:0;margin:0;border:0;background:#061722;overflow:hidden}#classPhotoDialog::backdrop{background:#061722}#classPhotoFrame{display:block;width:100%;height:100%;border:0}.heat-card{scroll-margin-top:16px}.heat-card:focus{outline:2px solid #12c8ff;outline-offset:3px}
+
+/* Task-focused session workspace: series directory → one recording sheet. */
+.workspace-toolbar{display:flex;justify-content:space-between;gap:10px;margin-bottom:14px}
+#eventSettingsBtn{display:none}#roundToolbar{display:flex;gap:12px;align-items:end;margin:16px 0}#roundToolbar label{flex:1;margin:0}
+#roundSetup,#trackDisplay{border:1px solid var(--line);padding:14px;border-radius:12px;margin:12px 0}#trackDisplay summary,#roundSetup summary{font-size:15px}
+#roundSetup>details{margin:16px 0}#seriesEditor{margin-bottom:18px}#seriesEditor summary{font-size:14px}
+.directory-heading{display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px}.directory-heading h2{margin:0}.directory-heading span{font-size:13px;color:var(--muted)}
+.series-tile{width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin:10px 0;padding:16px 12px;background:#103149;border-radius:14px}.series-tile>span:nth-child(2){flex:1}.series-tile b{font-size:15px}.series-tile small{letter-spacing:0;font-size:12px;line-height:1.5}.series-number{display:grid;place-items:center;width:38px;height:42px;background:#16486a;border-radius:10px;color:#8fe5ff;flex-shrink:0}.series-state{font-size:11px;color:#a6bdca}
+#seriesNavigator{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#0b2638;padding:12px 0;position:sticky;top:0;z-index:3;border-bottom:1px solid var(--line)}#seriesNavigator>span{font-size:12px;color:var(--muted)}.series-switch{display:flex;gap:8px}
+.series-open>#roundSetup,.series-open>#trackDisplay,.series-open>#roundToolbar,.series-open>#seriesEditor{display:none}
+#heatList .heat-card{margin-top:12px;scroll-margin-top:120px}#heatList .heat-card h3{font-size:18px}#heatList .heat-card small{letter-spacing:0}
+.series-actions{position:sticky;bottom:0;z-index:2;background:#0b2638;border-top:1px solid var(--line);padding:12px 0;gap:8px}.series-actions .photo-link{margin:0;text-align:center;min-height:44px}.series-actions>button{margin:0}
+@media(max-width:800px){
+ body{padding-bottom:calc(78px + env(safe-area-inset-bottom))}header{padding:10px 14px}.brand span{font-size:12px}.brand small{font-size:8px}header>a:nth-child(2){font-size:10px}main{padding:12px}
+ #app>nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:#071d2d;border-top:1px solid var(--line)}#app>nav button{font-size:13px;min-height:48px}
+ #message:empty{display:none}#message:not(:empty){position:fixed;left:12px;right:12px;top:8px;z-index:10;max-height:100px;overflow:auto;margin:0;background:#123047;box-shadow:0 4px 18px #0007;font-size:12px;pointer-events:none;animation:notice-fade 8s forwards}#message.error{background:#4e222a;pointer-events:auto;animation:none}
+ .session-open #classPane>.heading,.session-open #sessionHome{display:none}.session-open .layout{display:block}.session-open #sessionWorkspace{padding:12px;border:0;background:transparent}
+ #eventSettingsBtn{display:block}#sessionSummary h2{margin:4px 0;font-size:20px}#sessionSummary p{font-size:12px;margin:6px 0;line-height:1.4}#sessionSteps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:14px 0}#sessionSteps button{padding:10px 4px;font-size:13px}
+ #activityControls{margin:0 0 12px;padding:0;border:0}#activityControls>.filters label{margin:0}#activityControls>details{display:none}.event-options #activityControls>details{display:block}#activityControls summary{font-size:15px}
+ #trackControls>h2{display:none}#seriesNavigator{top:0;padding:8px;background:#061722}#seriesNavigator>button{font-size:13px}.series-switch{width:100%;justify-content:space-between}.series-switch button{font-size:13px}
+ .series-actions{bottom:calc(66px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;padding:10px 0}.heat-card .series-actions button{width:100%;font-size:13px}.series-actions .photo-link{grid-column:1/-1;font-size:14px;padding:10px}.heat-runner{gap:8px;padding:14px 0}.heat-runner>div b{font-size:14px}.heat-runner small{font-size:11px}.heat-runner label:last-child{grid-column:auto}.heat-runner label:nth-child(3){grid-column:2;grid-row:2 / span 2;align-self:start}.heat-runner input{font-size:20px;font-weight:700;min-height:56px}.heat-runner label{font-size:11px}.heat-runner select{font-size:12px;padding:9px 6px}
+ #attendancePane>p{font-size:12px}#attendancePane>button{position:sticky;bottom:calc(70px + env(safe-area-inset-bottom));z-index:2}#attendanceList{max-height:none}#roundParticipants{max-height:45vh}
+ .series-tile{min-height:82px}.series-state{max-width:65px}.workspace-toolbar button{font-size:13px}.heading{margin-top:14px}
+ @keyframes notice-fade{0%,80%{opacity:1}100%{opacity:0;visibility:hidden}}
+}
+@media print{#app>nav,.workspace-toolbar{display:none!important}}
+@media(max-width:800px){.heat-focus #sessionSummary,.heat-focus #sessionSteps,.heat-focus #activityControls,.heat-focus .workspace-toolbar{display:none}.heat-focus #sessionWorkspace{padding:0}.heat-focus #heatList .heat-card{scroll-margin-top:115px}}
