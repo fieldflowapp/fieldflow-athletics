@@ -6,6 +6,7 @@ function markConditionInputs(m){return `<details class="mark-conditions"><summar
 function readMarkConditions(row){const weight=row.querySelector('.mark-weight').value;return {timing_method:row.querySelector('.mark-timing').value,implement_kg:weight===''?null:Number(weight),conditions:row.querySelector('.mark-condition').value}}
 function clearClassDrafts(){S.draft.clear();S.heatDraft.clear();S.relayDraft.clear();S.configDirty=false;S.attendanceDirty=false;setDirty()}
 function renderActivityControls(){
+ document.querySelectorAll('#activityControls details').forEach(el=>el.open=false);
  $('activityPicker').innerHTML=S.activities.map(s=>{const e=S.events.find(e=>e.id===s.template_event_id);return option(s.id,`${e?.name||'Event'} · ${s.gender==='All'?'All Genders':s.gender==='F'?'Female':'Male'}`)}).join('');$('activityPicker').value=S.session.id;
  const events=[...new Map(S.events.map(e=>[e.name,e])).values()];$('addEvent').innerHTML=events.map(e=>option(e.id,e.name)).join('');updateAddGender();
  $('activityTiming').value=S.session.timing_method||'unspecified';$('activityWeight').value=S.session.implement_kg??'';$('activityConditions').value=S.session.conditions||'';
