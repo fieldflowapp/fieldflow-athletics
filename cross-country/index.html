@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#071d2d">
+<meta name="theme-color" content="#05060B">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<link rel="manifest" href="../manifest.webmanifest?v=27">
-<title>FieldFlow Athletics · Cross Country</title>
+<link rel="manifest" href="../manifest.webmanifest?v=45">
+<title>FieldFlow Athletics · Cross Country · NEO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#061722;--bg2:#071d2d;--panel:#0b2638;--line:#285067;--text:#eef8fc;--muted:#9db4bf;--blue:#0b5fff;--green:#18d39e;--red:#ff4d4d;--orange:#ff9f1c;--cyan:#12c8ff}
@@ -46,8 +46,8 @@
 #iosInstallDone{background:#0b5fff;color:#fff;border-color:#0b5fff!important}
 #iosInstallLater{background:#0d2a3a;color:#fff}
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="../assets/neo.css?v=45" media="screen"></head>
+<body data-neo="cross-country">
 
 <div id="iosInstallModal" aria-hidden="true">
   <div class="ios-install-card" role="dialog" aria-modal="true" aria-labelledby="iosInstallTitle">
@@ -74,7 +74,7 @@
       <a href="../">Home</a><a href="../competition.html">Track</a><a href="../field/">Field</a><a href="../general-results/">General Results</a><a href="../students/">Students</a><a href="../entries/">Entries</a><a href="../print/" target="_blank">Print</a><a class="active" href="./">Cross Country</a>
     </div>
   </div>
-  <div class="row"><span class="pill">v27</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
+  <div class="row"><span class="pill">NEO</span><span id="userPill" class="pill"></span><button id="logoutBtn" class="btn">Logout</button></div>
 </div>
 
 <div class="wrap">
@@ -432,6 +432,6 @@ boot().catch(e=>alert(e.message||String(e)));
 })();
 </script>
 
-<script src="../app-updater.js?v=31" data-build="31"></script>
+<script src="../app-updater.js?v=45" data-build="45"></script>
 </body>
 </html>

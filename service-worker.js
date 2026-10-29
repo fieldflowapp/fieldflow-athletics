@@ -1,4 +1,4 @@
-const CACHE='fieldflow-athletics-v40';
+const CACHE='fieldflow-athletics-neo-v45';
 self.addEventListener('install',event=>{self.skipWaiting();});
 self.addEventListener('activate',event=>{
   event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('fieldflow-athletics-')&&k!==CACHE).map(k=>caches.delete(k)))));

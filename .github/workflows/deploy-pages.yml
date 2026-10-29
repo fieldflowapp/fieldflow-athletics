@@ -3,6 +3,8 @@ name: Deploy FieldFlow Athletics
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: true
 
 jobs:
@@ -42,6 +44,7 @@ jobs:
           name: class-mode-previews
           path: /tmp/class-*
   deploy:
+    if: github.event_name != 'pull_request'
     needs: test
     environment:
       name: github-pages
