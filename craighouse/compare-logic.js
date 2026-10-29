@@ -1,0 +1,14 @@
+(function(root){
+ 'use strict';
+ const valid=r=>r.status==='valid'&&r.mark!==null&&r.mark!==''&&Number.isFinite(Number(r.mark))&&Number(r.mark)>0;
+ const key=r=>JSON.stringify([r.event_name,r.discipline,r.unit,r.category,r.gender,r.conditions||'']);
+ const better=(a,b,unit)=>unit==='s'?a<b:a>b;
+ const chronological=(a,b)=>String(a.performance_date||'').localeCompare(String(b.performance_date||''))||String(a.recorded_at||'').localeCompare(String(b.recorded_at||''))||Number(a.attempt_no||0)-Number(b.attempt_no||0)||String(a.record_id).localeCompare(String(b.record_id));
+ function unique(rows){const seen=new Set();return rows.filter(r=>{if(!r.record_id)return true;if(seen.has(r.record_id))return false;seen.add(r.record_id);return true})}
+ function filter(rows,{event='',source='All',from='',to=''}={}){return unique(rows).filter(r=>(!event||r.event_name===event)&&(source==='All'||r.source===source)&&(!from||r.performance_date>=from)&&(!to||r.performance_date<=to))}
+ function groups(rows){const result=new Map();for(const r of rows){const k=key(r);if(!result.has(k))result.set(k,[]);result.get(k).push(r)}return result}
+ function daily(rows){const result=new Map();for(const r of rows.filter(valid).sort(chronological)){if(!r.performance_date)continue;const previous=result.get(r.performance_date);if(!previous||better(Number(r.mark),Number(previous.mark),r.unit))result.set(r.performance_date,r)}return [...result.values()].sort(chronological)}
+ function summary(rows){const good=rows.filter(valid).sort(chronological),days=daily(good);let best=null;for(const r of good)if(!best||better(Number(r.mark),Number(best.mark),r.unit))best=r;const recent=days.slice(-3);const mean=recent.length?recent.reduce((s,r)=>s+Number(r.mark),0)/recent.length:null;const change=days.length>1?(Number(days.at(-1).mark)-Number(days[0].mark))*(days[0].unit==='s'?-1:1):null;return {best,latest:good.at(-1)||null,mean,days,recentDays:recent.length,validCount:good.length,total:rows.length,change}}
+ function rank(athletes,rows,metric='best',slots=3){const unit=rows[0]?.unit||'m';const list=athletes.map(a=>{const data=summary(rows.filter(r=>r.athlete_id===a.id));const value=metric==='recent'?data.mean:metric==='latest'?(data.latest?Number(data.latest.mark):null):(data.best?Number(data.best.mark):null);return {athlete:a,...data,value,rank:null}}).sort((a,b)=>a.value===null?(b.value===null?0:1):b.value===null?-1:(unit==='s'?a.value-b.value:b.value-a.value));let previous=null;list.forEach((x,i)=>{if(x.value!==null){x.rank=previous&&previous.value===x.value?previous.rank:i+1;previous=x}});const validList=list.filter(x=>x.value!==null);const cutoffTie=slots>0&&validList.length>slots&&validList[slots-1].value===validList[slots].value;return {list,cutoffTie}}
+ const api={valid,key,unique,filter,groups,daily,summary,rank,chronological};if(typeof module!=='undefined')module.exports=api;else root.CompareLogic=api;
+})(typeof window!=='undefined'?window:globalThis);

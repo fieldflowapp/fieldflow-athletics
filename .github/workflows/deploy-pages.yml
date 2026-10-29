@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '22'
       - name: Test Class Mode logic
-        run: node --test tests/class-logic.test.cjs
+        run: node --test tests/class-logic.test.cjs tests/compare-logic.test.cjs
       - name: Install isolated browser test runtime
         timeout-minutes: 4
         run: |
@@ -32,7 +32,9 @@ jobs:
       - name: Test desktop and mobile Class Mode
         env:
           CODEX_PRIMARY_RUNTIME_NODE_MODULES: /tmp/ff-browser-runtime/node_modules
-        run: node tests/class-browser.cjs
+        run: |
+          node tests/class-browser.cjs
+          node tests/compare-browser.cjs
       - name: Save browser previews
         if: always()
         uses: actions/upload-artifact@v4
