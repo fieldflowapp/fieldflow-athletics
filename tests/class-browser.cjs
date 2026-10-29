@@ -3,6 +3,7 @@ const {chromium}=require(require.resolve('playwright',{paths:process.env.CODEX_P
 const assert=require('node:assert/strict');
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const root=path.resolve(__dirname,'..');
+const previewRoot=process.env.FF_TEST_OUTPUT_DIR||require('node:os').tmpdir();fs.mkdirSync(previewRoot,{recursive:true});
 const mock=()=>{
  const athletes=[{id:'girl',first_name:'Student',last_name:'One',gender:'F',level:'Y7',color:'Blue',external_code:'TEST1',active:true},{id:'boy',first_name:'Student',last_name:'Two',gender:'M',level:'Y8',color:'Red',external_code:'TEST2',active:true},{id:'absent',first_name:'Absent',last_name:'Three',gender:'M',level:'Y8',color:'White',external_code:'TEST3',active:true}];
  const events=[{id:'event',name:'Long Jump',discipline:'field',category:'Y8'},{id:'track',name:'100 m',discipline:'track',category:'Y8',start_mode:'lanes'},{id:'relay',name:'Relay 4x100 m',discipline:'relay',category:'Y8'}];
@@ -92,8 +93,8 @@ async function seriesList(page){if(await page.locator('#allSeries').isVisible())
 async function createRound(page){await seriesList(page);if(!await page.locator('#generateHeats').isVisible())await page.locator('#roundSetup>summary').click();await page.click('#generateHeats');await page.waitForFunction(()=>!document.getElementById('app').inert)}
 async function eventOptions(page){await seriesList(page);if(await page.locator('#eventSettingsBtn').isVisible()&&await page.locator('#eventSettingsBtn').getAttribute('aria-expanded')==='false')await page.click('#eventSettingsBtn')}
 (async()=>{
- const server=http.createServer((req,res)=>{let p=path.join(root,new URL(req.url,'http://localhost').pathname);if(p.endsWith('/'))p+='index.html';if(!p.startsWith(root)){res.writeHead(403);return res.end()}fs.readFile(p,(err,data)=>{if(err){res.writeHead(404);return res.end()}res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html');res.end(data)})}).listen(0,'127.0.0.1');
- await new Promise(r=>server.on('listening',r));let browser;try{browser=await chromium.launch({headless:true})}catch(e){server.close();throw e}
+ const server=http.createServer((req,res)=>{let p=path.join(root,new URL(req.url,'http://localhost').pathname);if(new URL(req.url,'http://localhost').pathname.endsWith('/'))p=path.join(p,'index.html');if(!p.startsWith(root)){res.writeHead(403);return res.end()}fs.readFile(p,(err,data)=>{if(err){res.writeHead(404);return res.end()}res.setHeader('Content-Type',p.endsWith('.js')?'application/javascript':p.endsWith('.css')?'text/css':p.endsWith('.png')?'image/png':'text/html');res.end(data)})}).listen(0,'127.0.0.1');
+ await new Promise(r=>server.on('listening',r));let browser;try{browser=await chromium.launch({headless:true,executablePath:process.env.FF_TEST_BROWSER_EXECUTABLE})}catch(e){server.close();throw e}
  try{
  for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
   const page=await browser.newPage({viewport,serviceWorkers:'block'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -103,14 +104,14 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   let classUrl, categories;
   const openDatabase=async(hash='database')=>{classUrl=page.url();categories=await page.locator('#categoryChoices input:checked').evaluateAll(xs=>xs.map(x=>x.value));await page.goto(origin+'/craighouse/database.html#'+hash);await page.locator('#app').waitFor({state:'visible'});assert.equal(await page.locator('#classPane').isVisible(),false);assert.equal(await page.locator('#classTab').isVisible(),false)};
   const returnToClass=async()=>{await page.goto(classUrl);await page.waitForFunction(()=>!document.getElementById('app').hidden&&!document.getElementById('app').inert);await page.locator('#categoryChoices input').evaluateAll((xs,values)=>xs.forEach(x=>x.checked=values.includes(x.value)),categories)};
-  await page.goto(origin+'/');assert.equal(await page.locator('.module').count(),3);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/class-home-'+viewport.width+'.png',fullPage:true});
+  await page.goto(origin+'/');assert.equal(await page.locator('.module').count(),3);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:previewRoot+'/class-home-'+viewport.width+'.png',fullPage:true});
 
   for(const size of [{width:320,height:568},{width:390,height:664},{width:390,height:844},{width:844,height:390}]){
    await page.setViewportSize(size);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth),true,'Home fits '+size.width+'x'+size.height);
    assert.equal(await page.locator('.icon svg').count(),3);
    assert.deepEqual(await page.locator('.enter').allTextContents(),['→','→','→']);
-   await page.screenshot({path:'/tmp/class-home-compact-'+size.width+'x'+size.height+'.png',fullPage:true});
+   await page.screenshot({path:previewRoot+'/class-home-compact-'+size.width+'x'+size.height+'.png',fullPage:true});
   }
   await page.setViewportSize(viewport);
   await page.locator('.module').first().click();
@@ -124,7 +125,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   assert.ok(Math.abs(loadingBox.x+loadingBox.width/2-viewport.width/2)<2);
   assert.ok(Math.abs(loadingBox.y+loadingBox.height/2-viewport.height/2)<2);
   assert.equal(await page.evaluate(()=>getComputedStyle(document.getElementById('message'),'::before').animationName),'ff-loading-spin');
-  await page.screenshot({path:'/tmp/class-loading-'+viewport.width+'.png'});
+  await page.screenshot({path:previewRoot+'/class-loading-'+viewport.width+'.png'});
   await page.emulateMedia({reducedMotion:'reduce'});
   assert.equal(await page.evaluate(()=>getComputedStyle(document.getElementById('message'),'::before').animationName),'none');
   await page.emulateMedia({reducedMotion:'no-preference'});
@@ -145,20 +146,20 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.click('#nextAttempt');assert.equal(await page.locator('#attempt').inputValue(),'2');assert.equal(await page.locator('[data-athlete="girl"] .mark').inputValue(),'');
   await page.locator('[data-athlete="girl"] .mark').fill('12.9');await page.evaluate(()=>testState.failSave=true);await page.click('#saveMarks');await page.waitForFunction(()=>document.getElementById('message').textContent==='Test network error');assert.equal(await page.locator('[data-athlete="girl"] .mark').inputValue(),'12.9');
   await page.evaluate(()=>testState.failSave=false);await page.click('#saveMarks');await page.waitForFunction(()=>testState.marks.length===3);await page.waitForFunction(()=>!document.getElementById('app').inert);
-  await page.screenshot({path:'/tmp/class-sheet-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-sheet-'+viewport.width+'.png',fullPage:true});
   await openDatabase();await page.locator('#history tbody tr').first().waitFor();assert.equal(await page.locator('#history tbody tr').count(),2);assert.equal(await page.locator('#progress svg').count(),1);
   await page.click('#rankTab');await page.selectOption('#rankSource','class');await page.selectOption('#rankCategory','Y7');await page.click('#loadRanking');await page.locator('#ranking tbody tr').first().waitFor();assert.equal(await page.locator('#ranking tbody tr').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await returnToClass();await page.click('#sessionsBack');await page.locator('[data-discipline="track"]').click();await page.locator('[data-event="track"]').click();await page.locator('#quickYears input[value="Y7"]').check();await page.locator('#quickYears input[value="Y8"]').check();await page.click('#quickStart');
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.fill('#heatCapacity','1');await createRound(page);await page.locator('.series-tile').first().waitFor();
   assert.equal(await page.locator('.heat-card').count(),2);
-  await page.screenshot({path:'/tmp/class-series-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-series-'+viewport.width+'.png',fullPage:true});
   await page.locator('.series-tile').first().click();
   await page.locator('#heatList .heat-card:visible .heat-time').fill('13.21');
   await page.click('#nextSeries');assert.equal(await page.locator('#heatList .heat-card:visible').count(),1);
   await page.click('#previousSeries');assert.equal(await page.locator('#heatList .heat-card:visible .heat-time').inputValue(),'13.21');
   await page.locator('#heatList .heat-card:visible .save-heat').click();await page.waitForFunction(()=>!document.getElementById('app').inert);
-  await page.screenshot({path:'/tmp/class-focused-series-'+viewport.width+'.png'});
+  await page.screenshot({path:previewRoot+'/class-focused-series-'+viewport.width+'.png'});
   await seriesList(page);
   // Clear the test-only saved mark so lane editing is still permitted.
   await page.evaluate(()=>{testState.marks.splice(testState.marks.findIndex(m=>m.mark===13.21),1)});
@@ -169,9 +170,9 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.locator('.series-tile').first().click();assert.equal(await page.locator('#heatList .heat-card:visible').count(),1);
   const href=await page.locator('.photo-link').first().getAttribute('href');assert.ok(href.includes('classHeat='));
   await page.evaluate(()=>{const s=testState.sessions.at(-1),h=testState.heats.find(h=>h.session_id===s.id),en=testState.entries.find(e=>e.heat_id===h.id);localStorage.setItem('ff-photo-pending-v1:class-heat:'+h.id,JSON.stringify({savedAt:Date.now(),assignments:[[en.id,12.345]]}))});
-  const originalUrl=page.url();await page.evaluate(()=>window.parentSessionToken='still-open');const returnHeat=await page.locator('.photo-link').first().getAttribute('data-class-heat');await page.locator('.photo-link').first().click();const photo=page.frameLocator('#classPhotoFrame');await photo.locator('#saveResultsBtn').waitFor({state:'visible'});assert.ok((await photo.locator('#heatContext').textContent()).includes('CLASS'));assert.equal(page.url(),originalUrl);await page.screenshot({path:'/tmp/class-photo-overlay-'+viewport.width+'.png'});
+  const originalUrl=page.url();await page.evaluate(()=>window.parentSessionToken='still-open');const returnHeat=await page.locator('.photo-link').first().getAttribute('data-class-heat');await page.locator('.photo-link').first().click();const photo=page.frameLocator('#classPhotoFrame');await photo.locator('#saveResultsBtn').waitFor({state:'visible'});assert.ok((await photo.locator('#heatContext').textContent()).includes('CLASS'));assert.equal(page.url(),originalUrl);await page.screenshot({path:previewRoot+'/class-photo-overlay-'+viewport.width+'.png'});
   await photo.locator('#saveResultsBtn').click();await photo.locator('#mode').filter({hasText:'RESULTS SAVED'}).waitFor();await photo.locator('#backBtn').click();await page.locator('#classPhotoDialog').waitFor({state:'hidden'});await page.waitForFunction(id=>{const r=document.getElementById('class-heat-'+id)?.getBoundingClientRect();return r&&r.top>=0&&r.top<innerHeight-150&&document.activeElement?.id==='class-heat-'+id},returnHeat);assert.equal(await page.evaluate(()=>window.parentSessionToken),'still-open');assert.equal(page.url(),originalUrl);
-  assert.equal(await page.locator('.heat-time').first().inputValue(),'12.345');await page.screenshot({path:'/tmp/class-photo-return-'+viewport.width+'.png'});
+  assert.equal(await page.locator('.heat-time').first().inputValue(),'12.345');await page.screenshot({path:previewRoot+'/class-photo-return-'+viewport.width+'.png'});
   assert.equal(await page.locator('#heatMode').isDisabled(),true);const firstAssignments=await page.evaluate(()=>testState.entries.filter(e=>e.round_no===1).map(e=>[e.athlete_id,testState.heats.find(h=>h.id===e.heat_id).heat_number,e.lane]));await createRound(page);await page.waitForFunction(()=>document.getElementById('roundPicker').value==='2');
   assert.deepEqual(await page.evaluate(()=>testState.entries.filter(e=>e.round_no===2).map(e=>[e.athlete_id,testState.heats.find(h=>h.id===e.heat_id).heat_number,e.lane])),firstAssignments);assert.equal(await page.locator('.heat-card').count(),2);assert.ok((await page.locator('#heatList').textContent()).includes('Female'));assert.ok((await page.locator('#heatList').textContent()).includes('Male'));
   await seriesList(page);await page.selectOption('#roundPicker','1');await page.locator('.series-tile').first().click();assert.equal(await page.locator('.heat-time').first().inputValue(),'12.345');
@@ -194,7 +195,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.selectOption('#attendanceColour','White');await page.click('#selectPresent');await page.click('#clearPresent');
   await page.selectOption('#attendanceGender','All');await page.selectOption('#attendanceColour','All');assert.equal(await page.locator('#attendanceList input:checked').count(),1);assert.equal(await page.locator('[data-present="girl"]').isChecked(),true);
   await page.fill('#attendanceSearch','TEST3');assert.equal(await page.locator('#attendanceList input').count(),1);await page.click('#selectPresent');await page.fill('#attendanceSearch','');
-  await page.screenshot({path:'/tmp/class-attendance-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-attendance-'+viewport.width+'.png',fullPage:true});
   await page.click('#saveAttendance');await page.locator('#sheetControls').waitFor({state:'visible'});
   assert.equal(await page.locator('#sheet tr').count(),2);
   assert.equal(await page.evaluate(id=>testState.attendance.filter(a=>a.session_id===id&&a.available).length,trackRoot),3);
@@ -214,7 +215,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.click('#toggleSessionClosed');await page.waitForFunction(()=>document.getElementById('toggleSessionClosed').textContent==='Reopen session');await page.click('#recordStepBtn');assert.equal(await page.locator('#relayControls').isVisible(),false);
   await page.click('#toggleSessionClosed');await page.waitForFunction(()=>document.getElementById('toggleSessionClosed').textContent==='Close session');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await page.screenshot({path:'/tmp/class-mode-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-mode-'+viewport.width+'.png',fullPage:true});
   await page.click('#recordStepBtn');
   for(const [distance,clock,seconds] of [[400,'1:23.45',83.45],[600,'2:01.23',121.23],[800,'2:45.67',165.67]]){
    await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','track'+distance);await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');await createRound(page);await page.locator('.series-tile').first().click();await page.locator('#heatList .heat-time').waitFor();
@@ -226,10 +227,10 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await openDatabase('rank');await page.selectOption('#rankEvent','800 m');await page.selectOption('#rankCategory','Y7');await page.selectOption('#rankGender','F');await page.selectOption('#rankSource','class');await page.evaluate(()=>{window.print=()=>{window.printCalled=true}});await page.click('#printRanking');await page.waitForFunction(()=>window.printCalled);
   assert.ok((await page.locator('#rankingPrint').textContent()).includes('800 m'));assert.ok((await page.locator('#rankingPrint').textContent()).includes('2:45.68'));assert.ok((await page.locator('#rankingPrint').textContent()).includes('Y7 · Girls · Class'));
   await page.emulateMedia({media:'print'});assert.equal(await page.locator('main').isVisible(),false);assert.equal(await page.locator('#rankingPrint').isVisible(),true);
-  await page.screenshot({path:'/tmp/class-ranking-print-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-ranking-print-'+viewport.width+'.png',fullPage:true});
   if(viewport.width===1440){
    await page.evaluate(()=>{const tbody=document.querySelector('#rankingPrint tbody'),row=tbody.firstElementChild;for(let i=0;i<150;i++)tbody.append(row.cloneNode(true))});
-   const pdf=await page.pdf({path:'/tmp/class-ranking-a4.pdf',preferCSSPageSize:true,printBackground:true});const text=pdf.toString('latin1'),box=/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(text);assert.ok(box);assert.ok(Math.abs(Number(box[1])-841.89)<2);assert.ok(Math.abs(Number(box[2])-595.28)<2);assert.ok((text.match(/\/Type \/Page\b/g)||[]).length>1);
+   const pdf=await page.pdf({path:previewRoot+'/class-ranking-a4.pdf',preferCSSPageSize:true,printBackground:true});const text=pdf.toString('latin1'),box=/\/MediaBox\s*\[0 0 ([\d.]+) ([\d.]+)\]/.exec(text);assert.ok(box);assert.ok(Math.abs(Number(box[1])-841.89)<2);assert.ok(Math.abs(Number(box[2])-595.28)<2);assert.ok((text.match(/\/Type \/Page\b/g)||[]).length>1);
   }
   await page.emulateMedia({media:'screen'});await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')));assert.equal(await page.locator('main').isVisible(),true);assert.equal(await page.locator('#rankingPrint').isVisible(),false);assert.deepEqual(errors,[]);
   // Height progression with school's competition rules, independent attendance and derived best.
@@ -241,11 +242,15 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await addHeight('1.10');const firstHeight=await page.locator('#hjHeightPicker').inputValue();
   await hjButton('girl',0,'X').click();await hjButton('girl',1,'O').click();assert.equal(await hjButton('girl',2,'X').count(),0);
   await hjButton('boy',0,'-').click();assert.equal(await hjButton('boy',1,'X').count(),0);
+  const trialBackground=async locator=>locator.evaluate(el=>getComputedStyle(el).backgroundColor);
+  assert.notEqual(await trialBackground(hjButton('girl',0,'X')),await trialBackground(hjButton('girl',0,'O')),'A selected miss stays visually distinct');
+  assert.notEqual(await trialBackground(hjButton('girl',1,'O')),await trialBackground(hjButton('girl',1,'X')),'A selected clearance stays visually distinct');
+  assert.notEqual(await trialBackground(hjButton('boy',0,'-')),await trialBackground(hjButton('boy',0,'O')),'A selected pass stays visually distinct');
   await page.evaluate(()=>testState.failSave=true);await saveHJ();assert.equal(await page.locator('[data-hj-athlete="girl"] [aria-pressed="true"]').count(),2);assert.ok((await page.locator('#hjSaveState').textContent()).includes('unsaved'));
   await page.evaluate(()=>testState.failSave=false);await saveHJ();assert.equal(await page.evaluate(()=>testState.hjCards.find(c=>c.athlete_id==='girl').best_height),1.1);
   await addHeight('1.20');const secondHeight=await page.locator('#hjHeightPicker').inputValue();await hjButton('girl',0,'O').click();await hjButton('boy',0,'X').click();await hjButton('boy',1,'X').click();await hjButton('boy',2,'X').click();await saveHJ();
   const hjSession=await page.locator('#activityPicker').inputValue();assert.equal(await page.evaluate(s=>testState.marks.filter(m=>m.session_id===s&&m.athlete_id==='girl').length,hjSession),1);assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.2);
-  await page.screenshot({path:'/tmp/class-high-jump-'+viewport.width+'.png',fullPage:true});
+  await page.screenshot({path:previewRoot+'/class-high-jump-'+viewport.width+'.png',fullPage:true});
   await addHeight('1.30');assert.equal(await hjButton('boy',0,'O').count(),0);assert.ok((await page.locator('[data-hj-athlete="boy"]').textContent()).includes('Closed'));
   await page.selectOption('#hjHeightPicker',secondHeight);await hjButton('girl',0,'X').click();await saveHJ();assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.1);
   await page.click('#hjRefresh');await page.waitForFunction(()=>!document.getElementById('app').inert);await page.selectOption('#hjHeightPicker',firstHeight);assert.equal(await hjButton('girl',1,'O').getAttribute('aria-pressed'),'true');
@@ -257,8 +262,8 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   const oldDate=await page.evaluate(id=>testState.sessions.find(s=>s.id===id).session_date,hjSession);
   await page.locator('[data-old]').click();assert.equal(await page.locator('#activityPicker').inputValue(),hjSession);await page.click('#summaryStepBtn');await page.locator('#toggleSessionClosed').waitFor();await page.click('#toggleSessionClosed');await page.waitForFunction(()=>!document.getElementById('app').inert);
   await page.click('#sessionsBack');await page.click('#previousEvents');await page.selectOption('#previousStatus','closed');assert.equal(await page.locator('[data-old]').count(),1);await page.locator('[data-reopen]').click();await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.evaluate(id=>testState.sessions.find(s=>s.id===id).session_date,hjSession),oldDate);
-  await page.click('#sessionsBack');await page.click('#previousEvents');await page.click('#previousClear');await page.fill('#previousSearch','High Jump');await page.screenshot({path:'/tmp/class-event-history-'+viewport.width+'.png',fullPage:true});
-  await page.click('#backFromPrevious');await page.screenshot({path:'/tmp/class-event-picker-'+viewport.width+'.png',fullPage:true});
+  await page.click('#sessionsBack');await page.click('#previousEvents');await page.click('#previousClear');await page.fill('#previousSearch','High Jump');await page.screenshot({path:previewRoot+'/class-event-history-'+viewport.width+'.png',fullPage:true});
+  await page.click('#backFromPrevious');await page.screenshot({path:previewRoot+'/class-event-picker-'+viewport.width+'.png',fullPage:true});
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');

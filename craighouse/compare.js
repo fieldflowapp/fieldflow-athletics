@@ -1,6 +1,6 @@
 'use strict';
 // Read-only comparison of the existing administrator-protected history view.
-const C={ids:[],rows:[],loaded:false,request:0,chosen:new Set(),colors:['#64d6ed','#ffbf69','#c1a0ff','#7be0b9','#ff8eaa','#e5e875']};
+const C={ids:[],rows:[],loaded:false,request:0,chosen:new Set(),colors:['#FF408F','#FFB800','#BF83FF','#00E58F','#FF8754','#72C8FF']};
 const CL=CompareLogic;
 function prepareCompare(){
  if(!databaseWorkspace)return;

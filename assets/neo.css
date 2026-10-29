@@ -1,0 +1,160 @@
+/* FieldFlow NEO · presentation only. Never load in photo-finish/.
+   Screen-only rules deliberately leave all existing print layouts untouched. */
+@import url('./fonts/fonts.css');
+
+@media screen {
+  :root {
+    background: #05060b;
+    --ff-bg: #05060b;
+    --ff-navy: #080f1e;
+    --ff-surface: #0d1728;
+    --ff-border: #19243a;
+    --ff-pink: #ff006e;
+    --ff-orange: #ff4d00;
+    --ff-amber: #ffb800;
+    --ff-purple: #9b30ff;
+    --ff-text: #fff;
+    --ff-muted: #9ba5b8;
+    --ff-success: #00e58f;
+    --ff-error: #ff3b5c;
+    --ff-action: linear-gradient(110deg, #ff006e, #ef145a 55%, #d63b00);
+  }
+  body[data-neo] {
+    --ff-accent: var(--ff-pink);
+    --ff-tint: #ff006e18;
+    --ff-action: linear-gradient(110deg, #c90057, #df1657 55%, #c73b00);
+    --bg: var(--ff-bg); --navy2: var(--ff-bg); --navy: var(--ff-navy);
+    --card: var(--ff-surface); --card2: var(--ff-navy); --panel: var(--ff-surface);
+    --ink: var(--ff-text); --text: var(--ff-text); --white: var(--ff-text);
+    --line: var(--ff-border); --border: var(--ff-border); --muted: var(--ff-muted);
+    --blue: var(--ff-accent); --cyan: var(--ff-accent);
+    --green: var(--ff-success); --red: var(--ff-error); --orange: var(--ff-amber); --purple: var(--ff-purple);
+    color-scheme: dark;
+    min-height: 100svh;
+    color: var(--ff-text);
+    background: radial-gradient(ellipse at 90% 0%, var(--ff-tint), transparent 42%), var(--ff-bg);
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  body[data-neo="database"], body[data-neo="students"] {
+    --ff-accent: #bf83ff; --ff-tint: #9b30ff18;
+    --ff-action: linear-gradient(110deg, #6822e8, #8420d9 60%, #922ab4);
+  }
+  body[data-neo="field"], body[data-neo="results"], body[data-neo="print"] {
+    --ff-accent: var(--ff-amber); --ff-tint: #ffb80010;
+  }
+  body[data-neo] :is(h1,h2) { font-family: Montserrat, Inter, system-ui, sans-serif; letter-spacing: -.035em; }
+  body[data-neo] :is(p,small,.muted,.sub,.hint,.meta) { color: var(--ff-muted); }
+  body[data-neo] :is(a,.eyebrow) { color: #ff80b6; }
+  body[data-neo="database"] :is(a,.eyebrow) { color: #cf9aff; }
+  body[data-neo="field"] :is(a,.eyebrow), body[data-neo="results"] :is(a,.eyebrow) { color: #ffd16b; }
+  body[data-neo] :is(button,input,select,textarea,.btn) { font-family: inherit; border-radius: 12px; min-height: 46px; }
+  body[data-neo] :is(input,select,textarea) {
+    background: var(--ff-navy); color: var(--ff-text); border: 1px solid #34425c;
+    accent-color: var(--ff-accent); font-variant-numeric: tabular-nums;
+  }
+  body[data-neo] input::placeholder, body[data-neo] textarea::placeholder { color: var(--ff-muted); opacity: 1; }
+  body[data-neo] input:is([type="checkbox"],[type="radio"]) { min-height: 20px; border-radius: 4px; }
+  body[data-neo] :is(button,.btn) { background: #142036; color: white; border: 1px solid #34425c; transition: border-color .15s, background-color .15s; }
+  body[data-neo] :is(button,.btn):hover:not(:disabled) { border-color: var(--ff-accent); }
+  body[data-neo] :is(a,button,input,select,textarea,summary):focus-visible { outline: 3px solid var(--ff-accent); outline-offset: 3px; }
+  body[data-neo] :is(.primary,button.active,.tab.active,.nav a.active,.navlinks a.active) {
+    background: var(--ff-action); border-color: #ff467e; color: white;
+    box-shadow: 0 3px 18px #ff006e1a;
+  }
+  body[data-neo="database"] :is(.primary,button.active,.nav a.active) { border-color: #be79ff; box-shadow: 0 3px 18px #9b30ff1a; }
+  body[data-neo] :is(.btn.good,button.good) { background: #073c2d; border-color: #008c60; color: #8effcf; }
+  body[data-neo] :is(.btn.warn,button.warn) { background: #3c2909; border-color: #a47713; color: #ffd16b; }
+  body[data-neo] :is(.btn.danger,button.danger,.btn.bad) { background: #4a1424; border-color: var(--ff-error); color: #ffc1cf; }
+  body[data-neo] .btn.ghost { background: transparent; border: 1px solid #34425c; }
+  body[data-neo] :is(button.chosen-clear,button.active-clear,button.onP) { background: #075538; border-color: #00e58f; color: #b6ffdf; }
+  body[data-neo] :is(button.chosen-miss,button.active-miss,button.onA) { background: #761d38; border-color: #ff3b5c; color: white; }
+  body[data-neo] :is(button.chosen-pass,button.active-pass) { background: #33435f; border-color: #91a3c2; color: white; }
+  body[data-neo] :is(.hj-athlete-card,.hj-attempt-group,.hj-done,.hj-mobile-top) { background: var(--ff-navy); border-color: var(--ff-border); }
+  body[data-neo] :is(.panel,.card,.modalcard,.stat,.scorecard,.heat,.heat-card,.hj-athlete,.compare-athlete-card,.compare-chart-panel,.compare-bars,.past-event) {
+    background: var(--ff-surface); border-color: var(--ff-border); border-radius: 16px;
+  }
+  body[data-neo] :is(.panel,.card) { box-shadow: 0 10px 30px #0002; }
+  body[data-neo] :is(.tabs,.heathead,.pill,.badge,.record-card,.message,.series-tile,.assignment-row,.class-event-tile,.route-history,.compare-shortlist-status) {
+    background: var(--ff-navy); border-color: var(--ff-border);
+  }
+  body[data-neo] :is(.heathead,.tabs) { border-bottom: 1px solid var(--ff-border); }
+  body[data-neo] :is(.tab,.pill,.badge) { color: #c5ccda; }
+  body[data-neo] :is(.record-card b,.record-value,.series-number) { color: #ffd16b; }
+  body[data-neo] :is(.stat b,.pts,.timeinput,.compare-primary,.hj-height-now b,.hj-best,td) { font-variant-numeric: tabular-nums; }
+  body[data-neo] :is(th,td) { border-bottom-color: var(--ff-border); }
+  body[data-neo] th { color: #b7c0d1; background: var(--ff-navy); font-size: 11px; }
+  body[data-neo] :is(.sticky1,.sticky2), body[data-neo="results"] :is(td:first-child,th:first-child) { background: var(--ff-surface); }
+  body[data-neo] tr.total td { background: #1b2439; }
+  body[data-neo] .tablewrap { border-color: var(--ff-border); scrollbar-color: #46506a var(--ff-navy); }
+  body[data-neo] tbody tr:hover { background: #ffffff04; }
+  body[data-neo] :is(.heat-runner,.attendance-student) { border-bottom-color: var(--ff-border); }
+  body[data-neo] :is(.series-actions,.hj-savebar,#seriesNavigator,.compare-view-tabs,.actions) { background: var(--ff-surface); border-color: var(--ff-border); }
+  body[data-neo] :is(#message.success,.message.good) { background: #073c2d; color: #8effcf; border-color: #008c60; }
+  body[data-neo] :is(#message.error,.message.bad) { background: #4a1424; color: #ffc1cf; border-color: var(--ff-error); }
+  body[data-neo] #message.loading { color: var(--ff-muted); }
+  body[data-neo] #message.loading::before { border-color: var(--ff-border); border-top-color: var(--ff-accent); border-right-color: var(--ff-pink); box-shadow: 0 0 24px var(--ff-tint); }
+  body[data-neo] #message.loading::after { background: var(--ff-action); }
+  body[data-neo] :is(svg:not(.icon svg),.compare-bar-track) { background: var(--ff-navy); }
+  body[data-neo] .brand { color: white; }
+  body[data-neo] .brand::after {
+    content: 'NEO'; display: inline-block; flex-shrink: 0; padding: 5px 8px;
+    border: 1px solid #ff006e66; border-radius: 6px; background: #ff006e10;
+    color: #ff80b6; font: 800 9px Inter, system-ui, sans-serif; letter-spacing: .16em;
+  }
+  body[data-neo] .mark { background: black; box-shadow: none; }
+  body[data-neo] :is(header:not(.head),.topbar) { border-color: var(--ff-border); }
+  body[data-neo="students"] .topbar { background: #080f1ef5; }
+  body[data-neo="cross-country"] :is(.topbar,.filters,.racehead,.racebody,.score) { background: var(--ff-surface); }
+  body[data-neo] > header { background: var(--ff-navy); }
+  body[data-neo] :is(.nav a,.navlinks a) { min-height: 44px; display: inline-flex; align-items: center; border-radius: 10px; border-color: #34425c; color: #bdc5d5; }
+  body[data-neo] .install-app-bar { background: #080f1ef5; border-color: var(--ff-border); }
+  body[data-neo] .class-event-tile { min-height: 86px; border-left: 3px solid var(--ff-accent); }
+  body[data-neo] .class-event-tile > span:last-child { color: var(--ff-accent); font-size: 26px; }
+  body[data-neo] .series-number { background: #ff006e16; border: 1px solid #ff006e55; color: #ff80b6; }
+  body[data-neo] :is(.compare-candidate>span:last-child,.compare-event-grid button>span,.compare-point-detail) { color: #cf9aff; }
+  body[data-neo] #login { border-top: 2px solid var(--ff-accent); }
+  body[data-neo] .photo-link { background: var(--ff-action); color: white; border: 1px solid #ff467e; }
+  body[data-neo] .neo-home-link { display: inline-block; margin: 16px; color: #ff80b6; }
+  body[data-neo] .neo-event-tools { border-top: 1px solid var(--ff-border); margin-top: 10px; padding-top: 12px; }
+  body[data-neo] .neo-event-tools > summary { cursor: pointer; font-size: 13px; font-weight: 650; min-height: 44px; padding: 12px 0; color: #c5ccda; }
+
+  /* Print controls are themed individually; paper and its variables are preserved. */
+  body[data-neo="print"] { --ink: #17232b; --muted: #66727a; --line: #d7dde1; --navy: #071d2d; }
+  body[data-neo="print"] .sheet { color: #17232b; background: white; color-scheme: light; }
+  body[data-neo="print"] .sheet { font-family: Arial, Helvetica, sans-serif; }
+  body[data-neo="print"] .sheet :is(h1,h2) { font-family: Arial, Helvetica, sans-serif; letter-spacing: normal; }
+  body[data-neo="print"] .sheet :is(th,td) { border-color: #d7dde1; }
+  body[data-neo="print"] .sheet th { color: #17232b; background: #f2f5f7; font-size: 10px; }
+  body[data-neo="print"] .sheet :is(small,.meta,.footer,.empty) { color: #66727a; }
+  body[data-neo="print"] .sheet :is(.heat,.head) { background: transparent; border-radius: 0; border-color: #071d2d; }
+  body[data-neo="print"] .sheet tbody tr:hover { background: transparent; }
+  body[data-neo="print"] :is(.bar,.login) { color: white; background: var(--ff-surface); border: 1px solid var(--ff-border); padding: 16px; border-radius: 16px; }
+  body[data-neo="print"] .bar { flex-wrap: wrap; }
+  body[data-neo="print"] :is(.bar,.login) :is(input,select,button) { background: var(--ff-navy); color: white; border-color: #34425c; }
+
+  @media (max-width: 800px) {
+    body[data-neo] :is(.shell,main) { min-width: 0; }
+    body[data-neo] > header { gap: 10px; flex-wrap: wrap; }
+    body[data-neo] .brand::after { font-size: 8px; padding: 4px 6px; }
+    body[data-neo] :is(.nav,.navlinks) { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; padding-bottom: 6px; scrollbar-width: thin; }
+    body[data-neo] :is(.nav a,.navlinks a) { flex-shrink: 0; white-space: nowrap; }
+    body[data-neo] .topbar > div { min-width: 0; max-width: 100%; width: 100%; }
+    body[data-neo="cross-country"] .tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+    body[data-neo="cross-country"] .tab { min-width: 0; }
+    body[data-neo] .neo-event-selector { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 12px; }
+    body[data-neo] .neo-event-selector > :not(.field) { grid-column: 1 / -1; }
+    body[data-neo] .neo-event-selector .field { min-width: 0; }
+    body[data-neo="students"] .topbar { flex-direction: column; align-items: stretch; }
+    body[data-neo="students"] .topbar > .row { justify-content: space-between; }
+    body[data-neo] .pill { max-width: 100%; overflow-wrap: anywhere; }
+    body[data-neo] #app > nav { background: var(--ff-navy); border-color: var(--ff-border); }
+    body[data-neo] .toolbar { background: #080f1ef5; border-color: var(--ff-border); }
+    body[data-neo] .tabs { background: #080f1ef5; }
+    body[data-neo] :is(select,input,textarea) { font-size: 16px; }
+    body[data-neo] input:is([type="checkbox"],[type="radio"]) { min-height: 20px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body[data-neo] :is(button,.btn) { transition: none; }
+  }
+}

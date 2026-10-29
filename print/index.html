@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FieldFlow Athletics · Event Print</title>
+<title>FieldFlow Athletics · Event Print · NEO</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--ink:#17232b;--muted:#66727a;--line:#d7dde1;--navy:#071d2d}
@@ -37,14 +37,14 @@ th{background:#f2f5f7;font-size:10px;text-transform:uppercase}
 @media(max-width:900px){.sheet{width:100%;min-height:0;margin:0;padding:14px;box-shadow:none}.bar{margin:8px auto}.head{flex-direction:column}.record{text-align:left}}
 </style>
 
-  <link rel="manifest" href="../manifest.webmanifest?v=25">
+  <link rel="manifest" href="../manifest.webmanifest?v=45">
   <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-192.png">
   <link rel="apple-touch-icon" href="../icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FieldFlow Athletics">
-</head>
-<body>
+<link rel="stylesheet" href="../assets/neo.css?v=45" media="screen"></head>
+<body data-neo="print">
 <div id="login" class="login hidden">
   <h2 style="margin-top:0">Admin sign in</h2>
   <input id="email" type="email" placeholder="Email">
@@ -292,6 +292,6 @@ init();
 <script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('../service-worker.js?v=25').catch(console.error));}
 </script>
-<script src="../app-updater.js?v=31" data-build="31"></script>
+<script src="../app-updater.js?v=45" data-build="45"></script>
 </body>
 </html>
