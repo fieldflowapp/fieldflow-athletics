@@ -109,3 +109,25 @@ body[data-workspace="database"] #app>nav{grid-template-columns:repeat(3,minmax(0
 .compare-view-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:20px}.compare-view-tabs button{min-height:44px}.compare-more{margin:16px 0}.compare-more>summary{font-size:12px;font-weight:600;color:#aeeaff}.compare-more dl{margin:16px 0}.compare-chip-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.compare-chip{min-width:0}.compare-chart-scroll svg{max-height:none;max-width:900px;height:auto;margin:12px auto}.compare-chart-scroll{min-width:0}
 @media(max-width:800px){#compareSelected{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.compare-chip{font-size:11px;padding:6px;gap:4px}.compare-chip .compare-dot{width:7px;height:7px;margin:0}.compare-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.compare-athlete-card{padding:12px}.compare-card-title{gap:5px;align-items:start}.compare-card-title h3{font-size:13px;overflow-wrap:anywhere}.compare-position{font-size:14px}.compare-primary{font-size:21px}.compare-athlete-card>p{font-size:10px;line-height:1.5}.compare-shortlist{font-size:11px;gap:5px}.compare-shortlist input{flex-shrink:0}.compare-athlete-card dl{grid-template-columns:1fr}.compare-view-tabs{position:sticky;top:0;z-index:4;padding:8px 0;background:#061722}.compare-view-tabs button{font-size:13px}.compare-note{font-size:11px}}
 .compare-legend button{font-size:12px;padding:7px 10px;min-height:36px;display:flex;align-items:center;gap:4px}.compare-legend button[aria-pressed="false"]{opacity:.45;text-decoration:line-through}
+
+
+/* Event-first Class Mode. Existing FieldFlow palette; no neon redesign. */
+body[data-workspace="class"] #sessionHome{display:none!important}
+body[data-workspace="class"] .layout{display:block}
+body[data-workspace="class"] .layout>#sessionWorkspace{width:100%}
+.class-route{max-width:900px;margin:0 auto 18px}
+.class-event-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:15px}
+.class-event-tabs button{min-width:0}
+.event-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.class-event-tile,.route-history{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;background:#071d2d;border:1px solid var(--line);border-radius:12px;padding:17px}
+.class-event-tile b{display:block;font-size:16px}
+.class-event-tile small{font-size:12px;letter-spacing:0;margin-top:6px}
+.route-history{margin-top:16px}
+#eventSetupRoute{max-width:650px}
+#eventSetupRoute>button,#previousRoute>button{margin-bottom:16px}
+#quickStart{width:100%}
+#quickYears{grid-template-columns:repeat(3,minmax(0,1fr))}
+#quickYears label{padding:10px;border:1px solid var(--line);border-radius:8px}
+body.class-event-home #sessionWorkspace{display:none!important}
+body.class-event-workspace #eventRoute{display:none!important}
+@media(max-width:800px){.event-tiles{grid-template-columns:1fr}.class-event-tile{padding:15px}#quickYears{grid-template-columns:repeat(3,minmax(0,1fr))}}
