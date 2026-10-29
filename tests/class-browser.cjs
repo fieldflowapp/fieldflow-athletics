@@ -131,8 +131,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.evaluate(()=>notice(''));
   assert.equal(await page.locator('#message').getAttribute('class'),'');
   assert.equal(await page.locator('#gender').inputValue(),'All');
-  await page.locator('#categoryChoices input[value="Y7"]').check();await page.locator('#categoryChoices input[value="Y8"]').check();
-  await page.fill('#title','Mixed class');await page.click('#createSession');await page.locator('#attendanceList input').first().waitFor();
+  await page.locator('[data-discipline="field"]').click();await page.locator('[data-event="event"]').click();await page.locator('#quickYears input[value="Y7"]').check();await page.locator('#quickYears input[value="Y8"]').check();await page.click('#quickStart');await page.locator('#attendanceList input').first().waitFor();
   assert.equal(await page.locator('#sheetControls').isVisible(),false);
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.locator('#sheet tr').first().waitFor();
   assert.equal(await page.locator('[data-athlete="absent"]').count(),0);
@@ -150,7 +149,7 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await openDatabase();await page.locator('#history tbody tr').first().waitFor();assert.equal(await page.locator('#history tbody tr').count(),2);assert.equal(await page.locator('#progress svg').count(),1);
   await page.click('#rankTab');await page.selectOption('#rankSource','class');await page.selectOption('#rankCategory','Y7');await page.click('#loadRanking');await page.locator('#ranking tbody tr').first().waitFor();assert.equal(await page.locator('#ranking tbody tr').count(),1);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
-  await returnToClass();await page.click('#sessionsBack');if(!await page.locator('#sessionForm').isVisible())await page.locator('#sessionSetup summary').click();await page.selectOption('#event','track');await page.fill('#title','Mixed track');await page.click('#createSession');
+  await returnToClass();await page.click('#sessionsBack');await page.locator('[data-discipline="track"]').click();await page.locator('[data-event="track"]').click();await page.locator('#quickYears input[value="Y7"]').check();await page.locator('#quickYears input[value="Y8"]').check();await page.click('#quickStart');
   await page.locator('[data-present="girl"]').check();await page.locator('[data-present="boy"]').check();await page.click('#saveAttendance');await page.fill('#heatCapacity','1');await createRound(page);await page.locator('.series-tile').first().waitFor();
   assert.equal(await page.locator('.heat-card').count(),2);
   await page.screenshot({path:'/tmp/class-series-'+viewport.width+'.png',fullPage:true});
@@ -251,6 +250,15 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.selectOption('#hjHeightPicker',secondHeight);await hjButton('girl',0,'X').click();await saveHJ();assert.equal(await page.evaluate(s=>testState.marks.find(m=>m.session_id===s&&m.athlete_id==='girl').mark,hjSession),1.1);
   await page.click('#hjRefresh');await page.waitForFunction(()=>!document.getElementById('app').inert);await page.selectOption('#hjHeightPicker',firstHeight);assert.equal(await hjButton('girl',1,'O').getAttribute('aria-pressed'),'true');
   await openDatabase();await page.selectOption('#athletePicker','girl');await page.waitForFunction(()=>document.getElementById('historyEvent').textContent.includes('High Jump'));await page.selectOption('#historyEvent','High Jump');assert.ok((await page.locator('#history').textContent()).includes('1.1'));
+  await returnToClass();await seriesList(page);await page.click('#sessionsBack');await page.click('#previousEvents');
+  await page.fill('#previousSearch','High Jump');assert.equal(await page.locator('[data-old]').count(),1);
+  await page.selectOption('#previousYear','Y8');await page.selectOption('#previousGender','mixed');assert.equal(await page.locator('[data-old]').count(),1);
+  await page.selectOption('#previousGender','M');assert.equal(await page.locator('[data-old]').count(),0);await page.selectOption('#previousGender','mixed');
+  const oldDate=await page.evaluate(id=>testState.sessions.find(s=>s.id===id).session_date,hjSession);
+  await page.locator('[data-old]').click();assert.equal(await page.locator('#activityPicker').inputValue(),hjSession);await page.click('#summaryStepBtn');await page.locator('#toggleSessionClosed').waitFor();await page.click('#toggleSessionClosed');await page.waitForFunction(()=>!document.getElementById('app').inert);
+  await page.click('#sessionsBack');await page.click('#previousEvents');await page.selectOption('#previousStatus','closed');assert.equal(await page.locator('[data-old]').count(),1);await page.locator('[data-reopen]').click();await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.evaluate(id=>testState.sessions.find(s=>s.id===id).session_date,hjSession),oldDate);
+  await page.click('#sessionsBack');await page.click('#previousEvents');await page.click('#previousClear');await page.fill('#previousSearch','High Jump');await page.screenshot({path:'/tmp/class-event-history-'+viewport.width+'.png',fullPage:true});
+  await page.click('#backFromPrevious');await page.screenshot({path:'/tmp/class-event-picker-'+viewport.width+'.png',fullPage:true});
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
