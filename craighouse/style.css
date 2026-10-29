@@ -132,3 +132,6 @@ body.class-event-home #sessionWorkspace{display:none!important}
 body.class-event-workspace #eventRoute{display:none!important}
 @media(max-width:800px){.event-tiles{grid-template-columns:1fr}.class-event-tile{padding:15px}#quickYears{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .past-event{min-width:0;background:#071d2d;border:1px solid var(--line);border-radius:12px;overflow:hidden}.past-event .class-event-tile{border:0;border-radius:0;min-height:130px}.past-event small{overflow-wrap:anywhere}.reopen-event{margin:0 12px 12px;font-size:13px}#previousMore{margin-top:18px}#previousCount{font-size:13px}#previousRoute .filters label{min-width:130px}
+/* Keep the event task above the fold; avoid repeating the Class Mode heading. */
+body.class-event-home #classPane>.heading{display:none}.class-route>.heading{margin:0 0 18px}.class-route>.heading p{font-size:13px}#previousRoute>h2{display:none}.class-event-home #classPane{padding-top:12px}
+@media(max-width:800px){.class-route{padding:16px}.class-route>.heading{margin-bottom:14px}.class-event-tile b{font-size:15px}#previousRoute .filters{gap:8px}#previousRoute label{margin-bottom:10px}}
