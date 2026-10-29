@@ -40,13 +40,14 @@ function renderSeriesNavigation(){
  if(selected){$('allSeries').onclick=()=>selectSeries(null);$('previousSeries').onclick=()=>selectSeries(heats[index-1]?.id||null);$('nextSeries').onclick=()=>selectSeries(heats[index+1]?.id||null)}
  document.querySelectorAll('[data-open-series]').forEach(button=>button.onclick=()=>selectSeries(button.dataset.openSeries));
 }
+$('sessionsBack').textContent='‹ Events';
 $('sessionsBack').onclick=()=>{if(!proceed())return;clearClassDrafts();S.sessionHome=true;syncWorkspace();window.scrollTo(0,0)};
 $('eventSettingsBtn').onclick=()=>{const open=!document.body.classList.contains('event-options');document.body.classList.toggle('event-options',open);$('eventSettingsBtn').setAttribute('aria-expanded',String(open))};
 // Keep event configuration out of the normal recording route on a phone.
 const originalRenderActivityControls=renderActivityControls;
 renderActivityControls=function(){originalRenderActivityControls();document.body.classList.remove('event-options');$('eventSettingsBtn').setAttribute('aria-expanded','false')};
 $('attendanceStepBtn').textContent='Attendance';$('recordStepBtn').textContent='Record';$('summaryStepBtn').textContent='Summary';
-$('classTab').textContent='Classes';$('databaseTab').textContent='Athletes';$('rankTab').textContent='Rankings';
+$('classTab').textContent='Events';$('databaseTab').textContent='Athletes';$('rankTab').textContent='Rankings';
 // Put the series directory before secondary display and lane-editing options.
 $('trackControls').prepend($('roundToolbar'));
 $('roundToolbar').after($('roundSetup'));
