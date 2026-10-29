@@ -84,3 +84,11 @@ body[data-workspace="class"] #databaseTab,body[data-workspace="class"] #rankTab,
 body[data-workspace="class"] #app>nav{display:none}
 body[data-workspace="database"] #app>nav{grid-template-columns:repeat(2,1fr)}
 @media(max-width:800px){body[data-workspace="class"]{padding-bottom:env(safe-area-inset-bottom)}body[data-workspace="class"] .series-actions,body[data-workspace="class"] .hj-savebar,body[data-workspace="class"] #attendancePane>button{bottom:env(safe-area-inset-bottom)}}
+
+/* Initial loading is a centered, animated status, separate from result notices. */
+#message.loading:not(:empty){position:fixed;inset:auto;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;width:180px;max-width:calc(100vw - 32px);max-height:none;margin:0;padding:24px 12px;background:transparent;border:0;box-shadow:none;overflow:visible;color:#c9e9f5;font-size:14px;letter-spacing:.04em;text-align:center;pointer-events:none;opacity:1;visibility:visible;animation:none}
+#message.loading::before{content:"";display:block;width:48px;height:48px;box-sizing:border-box;border:3px solid #214155;border-top-color:#64d6ed;border-right-color:#7be0b9;border-radius:50%;animation:ff-loading-spin .8s linear infinite;box-shadow:0 0 24px #64d6ed18}
+#message.loading::after{content:"";width:36px;height:4px;border-radius:4px;background:linear-gradient(90deg,#64d6ed,#7be0b9);animation:ff-loading-pulse 1.2s ease-in-out infinite}
+@keyframes ff-loading-spin{to{transform:rotate(360deg)}}
+@keyframes ff-loading-pulse{0%,100%{opacity:.3;transform:scaleX(.5)}50%{opacity:1;transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){#message.loading::before,#message.loading::after{animation:none}}

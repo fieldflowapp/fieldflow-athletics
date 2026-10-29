@@ -20,6 +20,7 @@ function updateGenderOptions(){const e=S.events.find(e=>e.id===$('event').value)
 function populateEvents(){const events=[...new Map(S.events.map(e=>[e.name,e])).values()];$('event').innerHTML=events.map(e=>option(e.id,e.name+(e.discipline==='field'?' · metres':' · seconds'))).join('');$('rankEvent').innerHTML=[...new Set(S.events.map(e=>e.name))].map(x=>option(x,x)).join('');updateGenderOptions()}
 async function sessions(){S.sessions=await allRows(()=>sb.from('athletics_class_sessions').select('*').eq('tournament_id',S.tournament.id).order('session_date',{ascending:false}).order('id'));$('sessionPicker').innerHTML=option('','Choose session')+S.sessions.filter(s=>!s.parent_session_id).map(s=>option(s.id,`${s.session_date} · ${s.title} · ${s.gender==='All'?'All Genders':s.gender}`)).join('');if(S.session)$('sessionPicker').value=S.session.parent_session_id||S.session.id}
 async function boot(){
+ notice('Loading…','loading');
  const {data:{session}}=await sb.auth.getSession();$('login').hidden=!!session;$('app').hidden=true;$('logout').hidden=!session;if(!session){notice('');return}
  S.tournament=await checked(sb.from('tournaments').select('id,name').eq('slug','intercolour-athletics-2026').single());
  const allowed=await checked(sb.rpc('is_athletics_admin',{p_tournament_id:S.tournament.id}));if(!allowed)throw Error('This module requires an Athletics administrator account.');

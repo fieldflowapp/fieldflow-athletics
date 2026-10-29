@@ -104,10 +104,32 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   const openDatabase=async(hash='database')=>{classUrl=page.url();categories=await page.locator('#categoryChoices input:checked').evaluateAll(xs=>xs.map(x=>x.value));await page.goto(origin+'/craighouse/database.html#'+hash);await page.locator('#app').waitFor({state:'visible'});assert.equal(await page.locator('#classPane').isVisible(),false);assert.equal(await page.locator('#classTab').isVisible(),false)};
   const returnToClass=async()=>{await page.goto(classUrl);await page.waitForFunction(()=>!document.getElementById('app').hidden&&!document.getElementById('app').inert);await page.locator('#categoryChoices input').evaluateAll((xs,values)=>xs.forEach(x=>x.checked=values.includes(x.value)),categories)};
   await page.goto(origin+'/');assert.equal(await page.locator('.module').count(),3);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/class-home-'+viewport.width+'.png',fullPage:true});
+
+  for(const size of [{width:320,height:568},{width:390,height:664},{width:390,height:844},{width:844,height:390}]){
+   await page.setViewportSize(size);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1&&document.documentElement.scrollWidth<=innerWidth),true,'Home fits '+size.width+'x'+size.height);
+   assert.equal(await page.locator('.icon svg').count(),3);
+   assert.deepEqual(await page.locator('.enter').allTextContents(),['→','→','→']);
+   await page.screenshot({path:'/tmp/class-home-compact-'+size.width+'x'+size.height+'.png',fullPage:true});
+  }
+  await page.setViewportSize(viewport);
   await page.locator('.module').first().click();
   assert.equal(await page.locator('#databaseTab').isVisible(),false);
   assert.equal(await page.locator('#rankTab').isVisible(),false);
   await page.locator('#app').waitFor({state:'visible'});
+
+  await page.waitForFunction(()=>!document.getElementById('app').inert);
+  await page.evaluate(()=>notice('Loading…','loading'));
+  const loadingBox=await page.locator('#message').boundingBox();
+  assert.ok(Math.abs(loadingBox.x+loadingBox.width/2-viewport.width/2)<2);
+  assert.ok(Math.abs(loadingBox.y+loadingBox.height/2-viewport.height/2)<2);
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.getElementById('message'),'::before').animationName),'ff-loading-spin');
+  await page.screenshot({path:'/tmp/class-loading-'+viewport.width+'.png'});
+  await page.emulateMedia({reducedMotion:'reduce'});
+  assert.equal(await page.evaluate(()=>getComputedStyle(document.getElementById('message'),'::before').animationName),'none');
+  await page.emulateMedia({reducedMotion:'no-preference'});
+  await page.evaluate(()=>notice(''));
+  assert.equal(await page.locator('#message').getAttribute('class'),'');
   assert.equal(await page.locator('#gender').inputValue(),'All');
   await page.locator('#categoryChoices input[value="Y7"]').check();await page.locator('#categoryChoices input[value="Y8"]').check();
   await page.fill('#title','Mixed class');await page.click('#createSession');await page.locator('#attendanceList input').first().waitFor();
