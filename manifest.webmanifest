@@ -1,7 +1,7 @@
 {
   "name": "FieldFlow Athletics NEO",
   "short_name": "FF NEO",
-  "description": "FieldFlow NEO � Classes, competitions and athlete performance",
+  "description": "FieldFlow NEO · Classes, competitions and athlete performance",
   "id": "/fieldflow-athletics/?app=athletics-v3",
   "start_url": "/fieldflow-athletics/?app=athletics-v3&build=45",
   "scope": "/fieldflow-athletics/",
