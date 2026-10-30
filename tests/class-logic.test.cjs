@@ -36,3 +36,11 @@ test('high jump uses school competition rules and selects highest cleared height
  assert.deepEqual(L.highJumpEdit({a:['X','X','O']},'a',0,'O'),{a:['O','','']});
  assert.throws(()=>L.highJumpEdit({},'a',1,'O'));assert.throws(()=>L.highJumpEdit({a:['X','','']},'a',1,'-'));
 });
+test('relay slots follow the event, including five runners and configurable Inglesa',()=>{
+ assert.equal(L.relaySize({name:'Relay 4x400 m',relay_legs:4}),4);
+ assert.equal(L.relaySize({name:'Relay 5x300 m',relay_legs:5}),5);
+ assert.equal(L.relaySize({name:'Relay 8x50 m'}),8);
+ assert.equal(L.relaySize({name:'Relay Inglesa'}),4);
+ for(const name of ['Relay 4x400 m','Relay 5x300 m','Relay Inglesa'])assert.equal(L.usesClock({name,discipline:'relay'}),true);
+ for(const name of ['Hurdles 60 m','Hurdles 80 m'])assert.equal(L.usesClock({name,discipline:'track'}),false);
+});

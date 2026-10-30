@@ -334,7 +334,7 @@ async function boot(){
   if(te){alert('Unable to load tournament: '+te.message);return}
   state.tournament=t;
 
-  const {data:e,error:ee}=await sb.from('athletics_events').select('*').eq('tournament_id',t.id).in('discipline',['track','relay']).order('sort_order');
+  const {data:e,error:ee}=await sb.from('athletics_events').select('*').eq('class_only',false).eq('tournament_id',t.id).in('discipline',['track','relay']).order('sort_order');
   if(ee){alert('Access denied or events unavailable: '+ee.message);return}
   state.events=e||[];
 

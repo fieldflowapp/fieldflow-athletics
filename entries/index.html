@@ -214,7 +214,7 @@ async function reloadData(){
   const tid=state.tournament.id;
   const [athletes,events,registrations]=await Promise.all([
     fetchAllRows('athletics_athletes','*',tid,q=>q.eq('active',true)),
-    fetchAllRows('athletics_events','*',tid),
+    fetchAllRows('athletics_events','*',tid,q=>q.eq('class_only',false)),
     fetchAllRows('athletics_registrations','*',tid)
   ]);
   state.athletes=athletes;state.events=events;state.registrations=registrations;render();

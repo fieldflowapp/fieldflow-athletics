@@ -26,7 +26,7 @@ async function boot(){
  const allowed=await checked(sb.rpc('is_athletics_admin',{p_tournament_id:S.tournament.id}));if(!allowed)throw Error('This module requires an Athletics administrator account.');
  [S.athletes,S.events]=await Promise.all([
  allRows(()=>sb.from('athletics_athletes').select('id,external_code,first_name,last_name,level,gender,color,active').eq('tournament_id',S.tournament.id).order('last_name').order('id')),
- allRows(()=>sb.from('athletics_events').select('id,name,code,discipline,category,start_mode').eq('tournament_id',S.tournament.id).order('sort_order').order('id'))]);
+ allRows(()=>sb.from('athletics_events').select('id,name,code,discipline,category,start_mode,relay_legs').eq('tournament_id',S.tournament.id).order('sort_order').order('id'))]);
  const levels=[...new Set(S.athletes.map(a=>a.level))].sort((a,b)=>['Y1','Y2','Y3','Y4','Y5','Y6','Y7','Y8','Intermediate','Senior'].indexOf(a)-['Y1','Y2','Y3','Y4','Y5','Y6','Y7','Y8','Intermediate','Senior'].indexOf(b));
  $('categoryChoices').innerHTML=levels.map(l=>`<label><input type="checkbox" value="${esc(l)}">${esc(l)}</label>`).join('');$('rankCategory').innerHTML=levels.map(l=>option(l,l)).join('');
  $('date').value=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Santiago',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());

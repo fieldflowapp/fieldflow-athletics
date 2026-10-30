@@ -12,6 +12,7 @@
  const isHighJump=e=>e?.code==='HJ'||/^high jump$|^salto alto$/i.test(e?.name||'');
  function highJumpState(heights,trials={}){let best=null,eliminatedAt=null;for(const h of heights){const a=trials[h.id]||['','',''];if(a.includes('O'))best=Math.max(best||0,Number(h.height_m));if(eliminatedAt==null&&a.every(x=>x==='X'))eliminatedAt=h.sequence_no}return {best,eliminatedAt}}
  function highJumpEdit(trials,heightId,index,value){const next=JSON.parse(JSON.stringify(trials));const a=[...(next[heightId]||['','',''])];if(!['','O','X','-'].includes(value)||index<0||index>2||value==='-'&&index!==0)throw Error('Invalid high jump attempt.');if(index>0&&a[index-1]!=='X')throw Error('Record the previous miss first.');if(a[index]===value)return next;a[index]=value;for(let i=index+1;i<3;i++)a[i]='';next[heightId]=a;return next}
- const api={isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
+ const relaySize=e=>Number(e?.relay_legs)||Number((e?.name||'').match(/(\d+)\s*[x×]/i)?.[1])||4;
+ const api={relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
  if(typeof module!=='undefined')module.exports=api;else root.ClassLogic=api;
 })(typeof window!=='undefined'?window:globalThis);

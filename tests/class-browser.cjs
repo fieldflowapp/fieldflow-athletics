@@ -7,6 +7,7 @@ const previewRoot=process.env.FF_TEST_OUTPUT_DIR||require('node:os').tmpdir();fs
 const mock=()=>{
  const athletes=[{id:'girl',first_name:'Student',last_name:'One',gender:'F',level:'Y7',color:'Blue',external_code:'TEST1',active:true},{id:'boy',first_name:'Student',last_name:'Two',gender:'M',level:'Y8',color:'Red',external_code:'TEST2',active:true},{id:'absent',first_name:'Absent',last_name:'Three',gender:'M',level:'Y8',color:'White',external_code:'TEST3',active:true}];
  const events=[{id:'event',name:'Long Jump',discipline:'field',category:'Y8'},{id:'track',name:'100 m',discipline:'track',category:'Y8',start_mode:'lanes'},{id:'relay',name:'Relay 4x100 m',discipline:'relay',category:'Y8'}];
+ events.push(...[{id:'r400',name:'Relay 4x400 m',discipline:'relay',relay_legs:4},{id:'r300',name:'Relay 5x300 m',discipline:'relay',relay_legs:5},{id:'inglesa',name:'Relay Inglesa',discipline:'relay'},{id:'h60',name:'Hurdles 60 m',discipline:'track',start_mode:'lanes'},{id:'h80',name:'Hurdles 80 m',discipline:'track',start_mode:'lanes'},{id:'discus',name:'Discus Throw',discipline:'field'}]);
  events.push({id:'hj',name:'High Jump',code:'HJ',discipline:'field',category:'Y7'});
  for(const distance of [400,600,800])events.push({id:'track'+distance,name:distance+' m',discipline:'track',category:'Y7',start_mode:'mass_start'});
  const db=JSON.parse(localStorage.getItem('test-db')||'{"sessions":[],"marks":[],"attendance":[],"heats":[],"entries":[],"sequence":0,"teams":[],"legs":[],"audit":[],"hjHeights":[],"hjCards":[]}');const {sessions,marks,attendance,heats,entries,teams,legs,audit,hjHeights,hjCards}=db;
@@ -264,6 +265,19 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.click('#sessionsBack');await page.click('#previousEvents');await page.selectOption('#previousStatus','closed');assert.equal(await page.locator('[data-old]').count(),1);await page.locator('[data-reopen]').click();await page.locator('#highJumpControls').waitFor({state:'visible'});assert.equal(await page.evaluate(id=>testState.sessions.find(s=>s.id===id).session_date,hjSession),oldDate);
   await page.click('#sessionsBack');await page.click('#previousEvents');await page.click('#previousClear');await page.fill('#previousSearch','High Jump');await page.screenshot({path:previewRoot+'/class-event-history-'+viewport.width+'.png',fullPage:true});
   await page.click('#backFromPrevious');await page.screenshot({path:previewRoot+'/class-event-picker-'+viewport.width+'.png',fullPage:true});
+  // The new templates use the existing attendance and result flows.
+  for(const [id,discipline] of [['r400','relay'],['r300','relay'],['inglesa','relay'],['h60','track'],['h80','track'],['discus','field']]){
+   await page.locator(`[data-discipline="${discipline}"]`).click();await page.locator(`[data-event="${id}"]`).click();await page.locator('#quickYears input[value="Y7"]').check();await page.selectOption('#quickGender','F');await page.click('#quickStart');await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');
+   if(discipline==='relay'){
+    assert.equal(await page.locator('.team-athlete').count(),id==='r300'?5:4);
+    if(id==='inglesa'){await page.click('.add-leg');assert.equal(await page.locator('.team-athlete').count(),5)}
+    await page.locator('.team-athlete').first().selectOption('girl');await page.click('#saveRelayTeams');await page.locator('.relay-time').fill('4:12.34');await page.click('#saveRelay');
+   }else if(discipline==='track'){
+    await createRound(page);await page.locator('.series-tile').first().click();await page.locator('.heat-time').fill('12.34');await page.click('.save-heat');
+   }else{await page.locator('.mark').fill('18.75');await page.click('#saveMarks')}
+   await page.waitForFunction(()=>!document.getElementById('app').inert);assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),discipline==='relay'?252.34:discipline==='track'?12.34:18.75);
+   await seriesList(page);await page.click('#sessionsBack');
+  }
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');

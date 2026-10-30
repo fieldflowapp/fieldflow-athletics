@@ -135,7 +135,7 @@ async function init(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){$('login').classList.remove('hidden');return}
   $('main').classList.remove('hidden');
-  const {data:events,error}=await sb.from('athletics_events').select('*').eq('tournament_id',TOURNAMENT_ID).in('discipline',['track','relay','field']).order('category').order('gender').order('sort_order');
+  const {data:events,error}=await sb.from('athletics_events').select('*').eq('class_only',false).eq('tournament_id',TOURNAMENT_ID).in('discipline',['track','relay','field']).order('category').order('gender').order('sort_order');
   if(error){$('sheet').innerHTML='<div class="empty">'+esc(error.message)+'</div>';return}
   allEvents=events||[];
   $('categoryFilter').innerHTML='<option value="All">All categories</option>'+[...new Set(allEvents.map(e=>e.category))].sort((a,b)=>({Y5:5,Y6:6,Y7:7,Y8:8,Intermediate:9,Senior:10}[a]||99)-({Y5:5,Y6:6,Y7:7,Y8:8,Intermediate:9,Senior:10}[b]||99)).map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');

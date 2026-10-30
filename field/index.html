@@ -305,7 +305,7 @@ async function boot(){
   const {data:t,error:te}=await sb.from('tournaments').select('*').eq('slug',TOURNAMENT_SLUG).single();
   if(te){alert(te.message);return}
   state.tournament=t;
-  const {data:e,error:ee}=await sb.from('athletics_events').select('*').eq('tournament_id',t.id).eq('discipline','field').order('sort_order');
+  const {data:e,error:ee}=await sb.from('athletics_events').select('*').eq('class_only',false).eq('tournament_id',t.id).eq('discipline','field').order('sort_order');
   if(ee){alert('Unable to load field events: '+ee.message);return}
   state.events=e||[];
   $('category').innerHTML=['Y5','Y6','Y7','Y8','Intermediate','Senior'].map(x=>'<option>'+x+'</option>').join('');
