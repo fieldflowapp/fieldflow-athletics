@@ -40,6 +40,10 @@ const mock=()=>{
  }
  window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:{user:{id:'teacher'}}}}),onAuthStateChange:()=>{},signOut:async()=>{}},from:t=>new Query(t),rpc:async(fn,p)=>{
   if(fn==='is_athletics_admin')return {data:true};
+  if(fn==='athletics_quick_record'){
+   if(window.testState.failSave)return {error:{message:'Test network error'}};
+   if(!sessions.some(s=>s.id===p.p_id)){sessions.push({id:p.p_id,template_event_id:p.p_event,session_date:p.p_date,source:p.p_source,title:'Quick record',gender:'All',categories:['Y7','Y8']});p.p_rows.forEach((r,i)=>saveMarks(p.p_id,i+1,[{...r,status:'valid',notes:p.p_notes}]))}return {data:p.p_id};
+  }
   if(window.testState.failSave)return {error:{message:'Test network error'}};
   if(fn==='athletics_save_class_hj'){
    let card=hjCards.find(c=>c.session_id===p.p_session_id&&c.athlete_id===p.p_athlete_id);
@@ -278,6 +282,12 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
    await page.waitForFunction(()=>!document.getElementById('app').inert);assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),discipline==='relay'?252.34:discipline==='track'?12.34:18.75);
    await seriesList(page);await page.click('#sessionsBack');
   }
+  await page.click('[data-open-quick]');await page.selectOption('#qrEvent','hj');await page.fill('#qrDate','2026-10-20');await page.fill('#qrSearch','One');await page.locator('[data-qr-add="girl"]').click();await page.locator('[data-qr-mark="0"]').fill('1,80');
+  await page.evaluate(()=>testState.failSave=true);await page.click('#qrSave');await page.waitForFunction(()=>document.getElementById('qrStatus').textContent.includes('Test network error'));assert.equal(await page.locator('[data-qr-mark="0"]').inputValue(),'1,80');
+  await page.evaluate(()=>testState.failSave=false);await page.click('#qrSave');await page.waitForFunction(()=>document.getElementById('qrStatus').textContent.includes('Saved 1 record'));assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),1.8);
+  await page.selectOption('#qrEvent','track400');await page.locator('[data-qr-add="girl"]').click();await page.locator('[data-qr-mark="0"]').fill('1:24.56');await page.click('#qrSave');await page.waitForFunction(()=>document.getElementById('qrStatus').textContent.includes('Saved 1 record'));assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),84.56);
+  await page.selectOption('#qrEvent','discus');await page.locator('[data-qr-add="girl"]').click();await page.locator('[data-qr-add="girl"]').click();await page.locator('[data-qr-mark="0"]').fill('18.75');await page.locator('[data-qr-mark="1"]').fill('19.10');await page.click('#qrSave');await page.waitForFunction(()=>document.getElementById('qrStatus').textContent.includes('Saved 2 records'));
+  await page.selectOption('#qrEvent','r400');await page.locator('[data-qr-add="girl"]').click();await page.fill('#qrTeamTime','4:12.34');await page.screenshot({path:previewRoot+'/class-quick-record-'+viewport.width+'.png',fullPage:true});await page.click('#qrSave');await page.waitForFunction(()=>document.getElementById('qrStatus').textContent.includes('Saved 1 record'));assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),252.34);await page.click('#qrClose');
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');
