@@ -29,7 +29,7 @@ begin
   update athletics_class_marks set notes=left(notes||' · '||p_notes,500) where session_id=p_id;
  else
   for r in select * from jsonb_array_elements(p_rows) loop
-   ordinal:=ordinal+1;
+   select coalesce(max(attempt_no),0)+1 into ordinal from athletics_class_marks where session_id=p_id and athlete_id=(r->>'athlete_id')::uuid;
    perform athletics_save_class_marks(p_id,ordinal,jsonb_build_array(jsonb_build_object('athlete_id',r->>'athlete_id','mark',r->'mark','status','valid','notes',p_notes)));
   end loop;
  end if;
