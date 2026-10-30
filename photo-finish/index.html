@@ -89,10 +89,10 @@ video{width:100%;height:100%;object-fit:cover;background:#000;touch-action:none}
 .slider .small{font-size:9px}
 input[type=range]{width:100%;margin:0;touch-action:pan-x}
 #prevFrame,#markFinish,#nextFrame{min-height:44px;padding:7px 4px;font-size:12px;touch-action:manipulation}
-#assignPanel{display:none;position:fixed;z-index:1000;left:8px;right:8px;top:calc(118px + env(safe-area-inset-top));bottom:calc(82px + env(safe-area-inset-bottom));background:#071d2df7;border:1px solid #285067;border-radius:14px;padding:10px;box-shadow:0 10px 40px #000b;overflow:hidden}
+#assignPanel{display:none;position:fixed;z-index:1000;left:8px;right:8px;top:auto;bottom:calc(82px + env(safe-area-inset-bottom));max-height:min(42dvh,360px);background:#071d2df7;border:1px solid #285067;border-radius:14px;padding:10px;box-shadow:0 10px 40px #000b;overflow:hidden}
 #assignPanel.show{display:flex;flex-direction:column}
-.assignTitle{text-align:center;font-weight:900;font-size:13px;margin-bottom:7px;flex:0 0 auto;position:sticky;top:0;background:#071d2df7;z-index:2;padding-bottom:2px}
-.lanes{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow-y:auto;overscroll-behavior:contain;min-height:0;flex:1 1 auto;padding-right:2px;align-content:start}
+.assignHeader{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-bottom:7px}.assignTitle{text-align:left;font-weight:900;font-size:12px;flex:1;min-width:0}.assignClose{flex:0 0 auto;min-height:36px;padding:6px 10px;border-radius:8px;background:#21516a;color:#fff;font-size:12px}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;min-height:0;flex:1 1 auto;padding-right:2px;align-content:start}
 .laneBtn{background:#102f44;color:#fff;text-align:left;border:1px solid #ffffff18;padding:8px 9px;min-height:48px;touch-action:manipulation}
 .laneBtn.saved{background:#153b31;border-color:var(--green)}
 #assignPanel.largeHeat .lanes{gap:4px}
@@ -123,7 +123,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
   #prevFrame,#markFinish,#nextFrame{min-height:40px;font-size:11px}
 }
 @media(max-height:820px){
-  #assignPanel{top:calc(104px + env(safe-area-inset-top));bottom:calc(78px + env(safe-area-inset-bottom));padding:8px}
+  #assignPanel{top:auto;bottom:calc(78px + env(safe-area-inset-bottom));max-height:min(42dvh,340px);padding:8px}
   .lanes{gap:5px}
   .laneBtn{min-height:44px;padding:7px 8px}
   .laneNo{font-size:13px}
@@ -190,7 +190,7 @@ input[type=range]{width:100%;margin:0;touch-action:pan-x}
 <div class="status" id="status">Cargando…</div><div class="status" style="opacity:.65">Official · Single Screen</div>
 </section>
 </main>
-<div id="assignPanel"><div class="assignTitle" id="assignTitle"></div><div class="lanes" id="laneButtons"></div></div>
+<div id="assignPanel" role="dialog" aria-label="Asignar tiempo a corredor"><div class="assignHeader"><div class="assignTitle" id="assignTitle"></div><button id="assignClose" class="assignClose" type="button">✕ VER VIDEO</button></div><div class="lanes" id="laneButtons"></div></div>
 </div>
 
 <script>
@@ -227,7 +227,7 @@ const camera=$('camera'),reviewVideo=$('reviewVideo'),timer=$('timer'),mode=$('m
 const cameraBtn=$('cameraBtn'),startBtn=$('startBtn'),recordBtn=$('recordBtn'),stopBtn=$('stopBtn'),reviewBtn=$('reviewBtn'),backBtn=$('backBtn'),qualityBadge=$('qualityBadge'),fpsSelect=$('fpsSelect');
 const reviewPanel=$('reviewPanel'),reviewTime=$('reviewTime'),scrubber=$('scrubber'),prevFrame=$('prevFrame'),nextFrame=$('nextFrame'),markFinish=$('markFinish'),playVideoBtn=$('playVideoBtn'),pauseVideoBtn=$('pauseVideoBtn'),reviewBackBtn=$('reviewBackBtn'),liveCameraBtn=$('liveCameraBtn');
 const desktopCamera=$('desktopCamera'),cameraSelect=$('cameraSelect'),refreshCameras=$('refreshCameras'),downloadVideoBtn=$('downloadVideoBtn');
-const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
+const heatContext=$('heatContext'),assignPanel=$('assignPanel'),assignClose=$('assignClose'),assignTitle=$('assignTitle'),laneButtons=$('laneButtons'),marksEl=$('marks'),saveResultsBtn=$('saveResultsBtn');
 
 let exportInProgress=false,clipRecordingStarted=0,clipDurationSec=0,requestedReviewSec=null,reviewSeekQueued=false,cameraOpening=false,recordingBlob=null,reviewOpening=false,stream=null,recorder=null,chunks=[],raceRunning=false,raceStart=0,raf=0,videoUrl=null,recordRaceMs=0,pendingMs=null,marks=[],heatEntries=[],stagedAssignments=new Map(),targetVideoBitrate=8000000,actualFps=60,captureVideoWidth=0,captureVideoHeight=0,captureOrientationAngle=0,reviewRotation=0,reviewCameraSuspended=false;
 const params=new URLSearchParams(location.search),demoMode=params.get('demo')==='1',heatId=params.get('heat'),eventId=params.get('event'),returnUrl=params.get('return'),classMode=params.has('classHeat'),classHeatId=params.get('classHeat'),relayMode=!classMode&&params.get('relay')==='1';
@@ -915,7 +915,17 @@ function renderLanes(){
   laneButtons.querySelectorAll('.laneBtn').forEach(b=>b.addEventListener('click',()=>stageLane(b.dataset.entry)));
   updateSaveButton();
 }
+function closeAssignPanel(){
+  // Cancel only the unassigned candidate; preserve video position and all staged times.
+  pendingMs=null;
+  assignPanel.classList.remove('show');
+  persistPendingAssignments();
+  renderMarks();
+}
+assignClose.addEventListener('click',closeAssignPanel);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&assignPanel.classList.contains('show'))closeAssignPanel()});
 markFinish.addEventListener('click',()=>{
+  reviewVideo.pause();
   pendingMs=currentMs();
   if(heatEntries.length){assignTitle.textContent='Tiempo '+(pendingMs/1000).toFixed(3)+' s — selecciona corredor';assignPanel.classList.add('show');renderLanes()}
   else{marks.push({time:pendingMs});pendingMs=null;renderMarks()}
@@ -924,6 +934,9 @@ function stageLane(entryId){
   if(pendingMs==null)return;
   const en=heatEntries.find(x=>x.id===entryId);if(!en)return;
   const sec=Number((pendingMs/1000).toFixed(3));
+  const existingTime=stagedAssignments.get(entryId);
+  if(existingTime!=null&&!confirm('Este corredor ya tiene '+Number(existingTime).toFixed(3)+' s pendiente. ¿Reemplazar por '+sec.toFixed(3)+' s?'))return;
+  if(existingTime==null&&en.official_time!=null&&!confirm('Este corredor ya tiene un resultado guardado. ¿Asignar un nuevo tiempo pendiente?'))return;
   stagedAssignments.set(entryId,sec);
   persistPendingAssignments();
   const existing=marks.findIndex(m=>m.entryId===entryId);
@@ -1029,7 +1042,7 @@ function closeCameraAndBack(){
     status.textContent='Espera a que termine SAVE RESULTS.';
     return;
   }
-  document.querySelector('.app').classList.remove('reviewMode');
+  if(assignPanel.classList.contains('show')){closeAssignPanel();return;}
   if(stagedAssignments.size>0){
     const leave=confirm('Hay tiempos pendientes sin SAVE RESULTS. ¿Volver al heat igualmente?');
     if(!leave)return;
