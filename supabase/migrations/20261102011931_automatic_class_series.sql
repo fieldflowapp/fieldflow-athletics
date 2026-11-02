@@ -88,6 +88,7 @@ begin
   if cardinality(cfg.lanes)>1 and (select count(*) from athletics_class_heat_entries where heat_id=h.id)=1 then
    select en.id into donor from athletics_class_heat_entries en join athletics_class_heats other on other.id=en.heat_id
    where other.session_id=p_session_id and other.round_no=cfg.round_no and other.gender=h.gender and other.heat_number<h.heat_number and other.status='scheduled'
+    and exists(select 1 from athletics_class_attendance att join athletics_athletes active_runner on active_runner.id=att.athlete_id where att.session_id=p_session_id and att.athlete_id=en.athlete_id and att.present and att.available and active_runner.active)
     and (select count(*) from athletics_class_heat_entries where heat_id=other.id)>2
     and not exists(select 1 from athletics_class_series_sheet where heat_id=other.id and status<>'scheduled')
    order by other.heat_number desc,en.lane desc limit 1;
@@ -204,6 +205,7 @@ begin
    if cardinality(lanes)>1 and (select count(*) from athletics_class_relay_teams where session_id=p_session_id and attempt_no=p_attempt and heat_number=heatno)=1 then
     select t.id into donor from athletics_class_relay_teams t where t.session_id=p_session_id and t.attempt_no=p_attempt and t.heat_number<heatno
      and not athletics_class_relay_heat_locked(p_session_id,p_attempt,t.heat_number)
+     and not exists(select 1 from athletics_class_relay_legs l join athletics_athletes a on a.id=l.athlete_id left join athletics_class_attendance att on att.session_id=l.session_id and att.athlete_id=l.athlete_id where l.team_id=t.id and (not a.active or not coalesce(att.present and att.available,false)))
      and (select count(*) from athletics_class_relay_teams x where x.session_id=p_session_id and x.attempt_no=p_attempt and x.heat_number=t.heat_number)>2 order by t.heat_number desc,t.lane desc limit 1;
     if found then update athletics_class_relay_teams set heat_number=heatno,lane=lanes[2] where id=donor;end if;
    end if;

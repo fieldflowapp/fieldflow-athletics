@@ -1,6 +1,6 @@
 begin;
 do $$
-declare tid uuid;uid uuid;eid uuid;relay uuid;sid uuid;late_sid uuid;locked_sid uuid;relay_sid uuid;ids uuid[];males uuid[];categories text[];h uuid;report jsonb;before_rows jsonb;before_marks jsonb;payload jsonb;teams jsonb;expected integer[];actual integer[];old_ids uuid[];team uuid;outcome boolean;
+declare tid uuid;uid uuid;eid uuid;relay uuid;sid uuid;late_sid uuid;departed_sid uuid;departed uuid;locked_sid uuid;relay_sid uuid;ids uuid[];males uuid[];categories text[];h uuid;report jsonb;before_rows jsonb;before_marks jsonb;payload jsonb;teams jsonb;expected integer[];actual integer[];old_ids uuid[];team uuid;outcome boolean;
 begin
  select id into tid from tournaments where slug='intercolour-athletics-2026';select user_id into uid from system_admins limit 1;
  select id into eid from athletics_events where tournament_id=tid and discipline='track' order by id limit 1;
@@ -31,6 +31,12 @@ begin
  select array_agg(n order by heat_number) into actual from (select h.heat_number,count(*)::integer n from athletics_class_heats h join athletics_class_heat_entries e on e.heat_id=h.id where h.session_id=late_sid group by h.heat_number) t;
  if actual<>array[7,2] or (select count(*) from athletics_class_heat_entries where id=any(old_ids))<>8 then raise exception 'Late runner / companion assignment wrong';end if;
  report:=athletics_save_class_roster_and_series(late_sid,ids[1:9]);if (report->>'added')::integer<>0 then raise exception 'Retry duplicated a late runner';end if;
+ -- A departed runner must never be borrowed as a late arrival's companion.
+ insert into athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,categories,gender) values(tid,eid,'ROLLBACK available companions',current_date,'All',categories,'All') returning id into departed_sid;
+ perform athletics_save_class_roster_and_series(departed_sid,ids[1:8]);perform athletics_create_class_round(departed_sid,array[1,2,3,4,5,6,7,8],'mixed',ids[1:8]);
+ select athlete_id into departed from athletics_class_heat_entries where session_id=departed_sid order by lane desc limit 1;
+ perform athletics_save_class_roster_and_series(departed_sid,array_remove(ids[1:9],departed));
+ if exists(select 1 from athletics_class_heat_entries e join athletics_class_heats h on h.id=e.heat_id join athletics_class_attendance att on att.session_id=e.session_id and att.athlete_id=e.athlete_id where e.session_id=departed_sid and h.heat_number=2 and not att.available) then raise exception 'Departed runner used as companion';end if;
  -- Once recorded, the donor series is immutable; retain a pending solo series with feedback.
  insert into athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,categories,gender) values(tid,eid,'ROLLBACK locked series',current_date,'All',categories,'All') returning id into locked_sid;
  perform athletics_save_class_roster_and_series(locked_sid,ids[1:8]);perform athletics_create_class_round(locked_sid,array[1,2,3,4,5,6,7,8],'mixed',ids[1:8]);
