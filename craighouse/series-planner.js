@@ -3,15 +3,21 @@
 function lanePicker(id,title){return `<fieldset class="lane-picker"><legend>${title}</legend><div class="lane-options">${Array.from({length:8},(_,i)=>`<label><input type="checkbox" value="${i+1}" checked><span>${i+1}</span></label>`).join('')}</div><small class="muted">Select the lanes available, from 1 to 8.</small></fieldset>`}
 function readLanes(id){return L.selectedLanes([...$(id).querySelectorAll('input:checked')].map(x=>Number(x.value)))}
 function setLanes(id,lanes){$(id).querySelectorAll('input').forEach(x=>x.checked=lanes.includes(Number(x.value)))}
+// Count selects a contiguous track; individual checkboxes still support closed lanes.
+function syncTrackCapacity(){
+ const lanes=[...$('trackLanes').querySelectorAll('input:checked')].map(input=>input.value);
+ $('trackCapacity').value=String(lanes.length);
+ $('trackLaneSummary').textContent=lanes.length?'Active lanes: '+lanes.join(', '):'Select at least one lane.';
+}
 function restoreSeriesSettings(){
  const cfg=[...S.roundSettings].sort((a,b)=>b.round_no-a.round_no).find(x=>x.kind===eventForSession().discipline);
- const lanes=cfg?.lanes||[1,2,3,4,5,6,7,8];setLanes('trackLanes',lanes);setLanes('relayLanes',lanes);
+ const lanes=cfg?.lanes||[1,2,3,4,5,6,7,8];setLanes('trackLanes',lanes);setLanes('relayLanes',lanes);syncTrackCapacity();
  $('heatMode').value=cfg?.mode||(S.session.gender==='All'?'mixed':'gender');
 }
 function seriesPreview(){
  try{
   const lanes=readLanes('trackLanes'),athletes=availableAthletes().filter(a=>S.roundSelection.has(a.id)),plan=L.planSeries(athletes,lanes,$('heatMode').value);
-  $('seriesPreview').textContent=plan.length?`${athletes.length} students · ${lanes.length} lanes · ${plan.length} series: `+plan.map(h=>`${h.gender==='All'?'Mixed':h.gender==='F'?'Female':'Male'} ${h.entries.length}`).join(' / ')+(plan.some(h=>h.entries.length===1)?' · A solo series is unavoidable with this participant / lane count.':''):'Select students for this round.';
+  $('seriesPreview').textContent=plan.length?`${athletes.length} students · ${lanes.length} lanes · ${plan.length} series: `+plan.map(h=>`${h.gender==='All'?'Mixed':h.gender==='F'?'Female':'Male'} ${h.entries.length}`).join(' / '):'Select students for this round.';
   $('generateHeats').disabled=S.busy||!athletes.length;
  }catch(e){$('seriesPreview').textContent=e.message;$('generateHeats').disabled=true}
 }
@@ -34,7 +40,15 @@ async function nextRelayRound(){
 }
 $('trackLanes').innerHTML=lanePicker('trackLanes','Lanes to use');
 $('relayLanes').innerHTML=lanePicker('relayLanes','Lanes to use · one complete team per lane');
-$('trackLanes').onchange=seriesPreview;$('heatMode').onchange=seriesPreview;
+$('trackLanes').insertAdjacentHTML('beforebegin','<label>Number of available lanes<select id="trackCapacity"><option value="0" disabled>Choose lanes</option>'+Array.from({length:8},(_,i)=>option(i+1,(i+1)+' lanes')).join('')+'</select></label><p id="trackLaneSummary" aria-live="polite"></p>');
+syncTrackCapacity();
+$('trackCapacity').onchange=()=>{
+ const count=Number($('trackCapacity').value);
+ setLanes('trackLanes',Array.from({length:count},(_,i)=>i+1));
+ syncTrackCapacity();
+ seriesPreview();
+};
+$('trackLanes').onchange=()=>{syncTrackCapacity();seriesPreview()};$('heatMode').onchange=seriesPreview;
 $('relayLanes').onchange=relaySeriesPreview;
 $('roundParticipants').addEventListener('change',seriesPreview);
 for(const id of ['allRound','noneRound'])$(id).addEventListener('click',seriesPreview);

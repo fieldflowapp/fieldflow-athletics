@@ -10,11 +10,30 @@ begin
  select array_agg(distinct level) into categories from athletics_athletes where tournament_id=tid and active;
  if cardinality(ids)<20 or cardinality(males)<40 then raise exception 'Not enough fixture athletes';end if;
  perform set_config('request.jwt.claim.sub',uid::text,true);execute 'set local role authenticated';
+ -- Verify the persisted split for each gender, not just the browser preview.
+ declare group_ids uuid[]; six_sid uuid; split jsonb;
+ begin
+  select array_agg(id) into group_ids from (
+   (select id from athletics_athletes where tournament_id=tid and active and gender='F' order by id limit 14)
+   union all (select id from athletics_athletes where tournament_id=tid and active and gender='M' order by id limit 18)
+  ) selected;
+  insert into athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,categories,gender)
+  values(tid,eid,'ROLLBACK six lanes',current_date,'All',categories,'All') returning id into six_sid;
+  perform athletics_save_class_roster_and_series(six_sid,group_ids);
+  perform athletics_create_class_round(six_sid,array[1,2,3,4,5,6],'gender',group_ids);
+  select jsonb_object_agg(gender,sizes) into split from (
+   select gender,array_agg(n order by heat_number) sizes from (
+    select h.gender,h.heat_number,count(*) n from athletics_class_heats h
+    join athletics_class_heat_entries e on e.heat_id=h.id where h.session_id=six_sid group by h.gender,h.heat_number
+   ) counts group by gender
+  ) groups;
+  if split is distinct from '{"F":[6,6,2],"M":[6,6,6]}'::jsonb then raise exception 'Unexpected six-lane split: %',split;end if;
+ end;
  -- Initial automatic sizes, real selected lane numbers, and old result preservation.
  insert into athletics_class_sessions(tournament_id,template_event_id,title,session_date,category,categories,gender) values(tid,eid,'ROLLBACK automatic series',current_date,'All',categories,'All') returning id into sid;
  perform athletics_save_class_roster_and_series(sid,ids[1:17]);perform athletics_create_class_round(sid,array[1,2,3,4,5,6,7,8],'mixed',ids[1:17]);
  select array_agg(n order by heat_number) into actual from (select h.heat_number,count(*)::integer n from athletics_class_heats h join athletics_class_heat_entries e on e.heat_id=h.id where h.session_id=sid and h.round_no=1 group by h.heat_number) t;
- if actual<>array[8,7,2] then raise exception 'Wrong 17/8 split: %',actual;end if;
+ if actual<>array[8,8,1] then raise exception 'Wrong 17/8 split: %',actual;end if;
  select jsonb_agg(to_jsonb(e) order by id) into before_rows from athletics_class_heat_entries e where session_id=sid;
  perform athletics_save_class_marks(sid,1,jsonb_build_array(jsonb_build_object('athlete_id',ids[1],'mark',12.34,'status','valid')));
  select jsonb_agg(to_jsonb(m) order by id) into before_marks from athletics_class_marks m where session_id=sid;

@@ -1,9 +1,8 @@
-# Class Mode: students, lanes and automatic series (build 48)
+# Class Mode: students, lanes and automatic series (build 49)
 
 Track sessions, including sprints and 400 m, now use the selected students, actual
 available lanes (1-8), and mixed or separate Female/Male grouping. No manual
-series count is required. Full series come first; a final singleton borrows one
-runner from the preceding series where possible (17 runners / 8 lanes = 8, 7, 2).
+series count is required. Select a lane count for lanes 1 through N, or toggle individual lanes. New track rounds fill each series before starting the next. Fourteen girls and eighteen boys on six lanes produce 6+6+2 and 6+6+6.
 The visible **Next round** button creates a new independent round using the
 current choices. Existing marks, earlier rounds and Photo Finish entry IDs remain
 unchanged. A round's lane selection is stored and restored when the event reopens.

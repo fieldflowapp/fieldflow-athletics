@@ -15,9 +15,15 @@ test('mixed and gender-separated plans use only the actual selected lanes',()=>{
   const plan=L.planSeries(athletes,[2,4,7],mode),entries=plan.flatMap(h=>h.entries);assert.equal(entries.length,19);assert.equal(new Set(entries.map(e=>e.athlete_id)).size,19);
   for(const heat of plan){assert.ok(heat.entries.every(e=>[2,4,7].includes(e.lane)));assert.equal(new Set(heat.entries.map(e=>e.lane)).size,heat.entries.length);if(mode==='gender')assert.ok(heat.entries.every(e=>athletes.find(a=>a.id===e.athlete_id).gender===heat.gender));}
  }
- assert.deepEqual(L.planSeries(athletes,[1,2,3,4,5,6,7,8],'gender').map(h=>h.entries.length),[8,2,7,2]);
+ assert.deepEqual(L.planSeries(athletes,[1,2,3,4,5,6,7,8],'gender').map(h=>h.entries.length),[8,2,8,1]);
 });
 test('invalid/empty/duplicate lanes and duplicate participants are rejected',()=>{
  for(const lanes of [[],[0],[9],[1,1],[1.5],[NaN]])assert.throws(()=>L.selectedLanes(lanes));
  assert.throws(()=>L.planSeries([{id:'a'},{id:'a'}],[1]));assert.throws(()=>L.seriesSizes(-1,8));
+});
+
+test('six selected lanes fill each gender independently',()=>{
+ const roster=Array.from({length:32},(_,i)=>({id:i,gender:i<14?'F':'M'}));
+ const heats=L.planSeries(roster,[1,2,3,4,5,6],'gender');
+ assert.deepEqual(heats.map(h=>[h.gender,h.entries.length]),[['F',6],['F',6],['F',2],['M',6],['M',6],['M',6]]);
 });

@@ -15,7 +15,20 @@
  const relaySize=e=>Number(e?.relay_legs)||Number((e?.name||'').match(/(\d+)\s*[x×]/i)?.[1])||4;
  function selectedLanes(values){if(!Array.isArray(values)||!values.length||values.length>8||values.some(v=>!Number.isInteger(v)||v<1||v>8)||new Set(values).size!==values.length)throw Error('Select lanes between 1 and 8.');return [...values].sort((a,b)=>a-b)}
  function seriesSizes(count,capacity){if(!Number.isInteger(count)||count<0||!Number.isInteger(capacity)||capacity<1||capacity>8)throw Error('Invalid series size.');const sizes=[];for(let left=count;left>0;left-=capacity)sizes.push(Math.min(left,capacity));const n=sizes.length;if(n>1&&sizes[n-1]===1&&sizes[n-2]>2){sizes[n-2]--;sizes[n-1]++}return sizes}
- function planSeries(athletes,lanes,mode='mixed'){const selected=selectedLanes(lanes);if(!['mixed','gender'].includes(mode))throw Error('Choose mixed or separate Male / Female.');if(new Set(athletes.map(a=>a.id)).size!==athletes.length)throw Error('A participant can run only once per round.');const groups=mode==='mixed'?['All']:['F','M'];let number=0;return groups.flatMap(g=>{const roster=athletes.filter(a=>g==='All'||a.gender===g);let offset=0;return seriesSizes(roster.length,selected.length).map(size=>({heat_number:++number,gender:g,entries:roster.slice(offset,offset+=size).map((a,i)=>({athlete_id:a.id,lane:selected[i]}))}))})}
+ function planSeries(athletes, lanes, mode='mixed') {
+  const selected = selectedLanes(lanes);
+  if (!['mixed','gender'].includes(mode)) throw Error('Choose mixed or separate Male / Female.');
+  if (new Set(athletes.map(a=>a.id)).size !== athletes.length) throw Error('A participant can run only once per round.');
+  const heats = [];
+  for (const gender of mode === 'mixed' ? ['All'] : ['F','M']) {
+   const group = gender === 'All' ? athletes : athletes.filter(a=>a.gender === gender);
+   for (let start=0; start<group.length; start+=selected.length) {
+    const entries = group.slice(start,start+selected.length).map((a,i)=>({athlete_id:a.id,lane:selected[i]}));
+    heats.push({heat_number:heats.length+1,gender,entries});
+   }
+  }
+  return heats;
+ }
  const api={selectedLanes,seriesSizes,planSeries,relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
  if(typeof module!=='undefined')module.exports=api;else root.ClassLogic=api;
 })(typeof window!=='undefined'?window:globalThis);
