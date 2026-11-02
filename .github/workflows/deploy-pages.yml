@@ -25,7 +25,7 @@ jobs:
         with:
           node-version: '22'
       - name: Test Class Mode logic
-        run: node --test tests/class-logic.test.cjs tests/compare-logic.test.cjs
+        run: node --test tests/class-logic.test.cjs tests/compare-logic.test.cjs tests/series-logic.test.cjs
       - name: Install isolated browser test runtime
         timeout-minutes: 4
         run: |
