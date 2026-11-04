@@ -29,6 +29,12 @@
   }
   return heats;
  }
- const api={selectedLanes,seriesSizes,planSeries,relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
+ const isOpenTrack=e=>e?.discipline==='track'&&(String(e.code||'').toUpperCase()==='800M'||/^800\s*(?:m\b|metres\b|metros\b)/i.test(e.name||''));
+ function planOpenSeries(athletes,mode='mixed'){
+  if(!['mixed','gender'].includes(mode))throw Error('Choose mixed or separate Male / Female.');
+  if(new Set(athletes.map(a=>a.id)).size!==athletes.length)throw Error('A participant can run only once per round.');
+  return (mode==='mixed'?['All']:['F','M']).map(g=>({gender:g,entries:athletes.filter(a=>g==='All'||a.gender===g).map(a=>({athlete_id:a.id,lane:null}))})).filter(h=>h.entries.length).map((h,i)=>({...h,heat_number:i+1}));
+ }
+ const api={isOpenTrack,planOpenSeries,selectedLanes,seriesSizes,planSeries,relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
  if(typeof module!=='undefined')module.exports=api;else root.ClassLogic=api;
 })(typeof window!=='undefined'?window:globalThis);
