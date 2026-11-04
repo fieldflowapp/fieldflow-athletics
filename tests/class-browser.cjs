@@ -6,6 +6,7 @@ const root=path.resolve(__dirname,'..');
 const previewRoot=process.env.FF_TEST_OUTPUT_DIR||require('node:os').tmpdir();fs.mkdirSync(previewRoot,{recursive:true});
 const mock=()=>{
  const athletes=[{id:'girl',first_name:'Student',last_name:'One',gender:'F',level:'Y7',color:'Blue',external_code:'TEST1',active:true},{id:'boy',first_name:'Student',last_name:'Two',gender:'M',level:'Y8',color:'Red',external_code:'TEST2',active:true},{id:'absent',first_name:'Absent',last_name:'Three',gender:'M',level:'Y8',color:'White',external_code:'TEST3',active:true}];
+ for(const athlete of JSON.parse(localStorage.getItem('test-fixture-athletes')||'[]'))if(!athletes.some(a=>a.id===athlete.id))athletes.push(athlete);
  const events=[{id:'event',name:'Long Jump',discipline:'field',category:'Y8'},{id:'track',name:'100 m',discipline:'track',category:'Y8',start_mode:'lanes'},{id:'relay',name:'Relay 4x100 m',discipline:'relay',category:'Y8'}];
  events.push(...[{id:'r400',name:'Relay 4x400 m',discipline:'relay',relay_legs:4},{id:'r300',name:'Relay 5x300 m',discipline:'relay',relay_legs:5},{id:'inglesa',name:'Relay Inglesa',discipline:'relay'},{id:'h60',name:'Hurdles 60 m',discipline:'track',start_mode:'lanes'},{id:'h80',name:'Hurdles 80 m',discipline:'track',start_mode:'lanes'},{id:'discus',name:'Discus Throw',discipline:'field'}]);
  events.push({id:'hj',name:'High Jump',code:'HJ',discipline:'field',category:'Y7'});
@@ -66,7 +67,7 @@ const mock=()=>{
   }
   if(fn==='athletics_create_class_round'){
    const roster=athletes.filter(a=>p.p_athletes.includes(a.id)),round=Math.max(0,...heats.filter(h=>h.session_id===p.p_session_id).map(h=>h.round_no),...marks.filter(m=>m.session_id===p.p_session_id).map(m=>m.attempt_no))+1;
-   const plan=ClassLogic.planSeries(roster,p.p_lanes,p.p_mode),created=[];roundSettings.push({session_id:p.p_session_id,round_no:round,kind:'track',mode:p.p_mode,lanes:p.p_lanes});
+   const event=events.find(e=>e.id===sessions.find(s=>s.id===p.p_session_id).template_event_id);const plan=ClassLogic.isOpenTrack(event)?ClassLogic.planOpenSeries(roster,p.p_mode):ClassLogic.planSeries(roster,p.p_lanes,p.p_mode),created=[];roundSettings.push({session_id:p.p_session_id,round_no:round,kind:'track',mode:p.p_mode,lanes:p.p_lanes});
    for(const item of plan){const h={id:next('heat'),session_id:p.p_session_id,round_no:round,heat_number:item.heat_number,gender:item.gender,status:'scheduled'};heats.push(h);created.push(h);for(const en of item.entries)entries.push({id:next('entry'),session_id:p.p_session_id,round_no:round,heat_id:h.id,...en})}persist();return {data:structuredClone(created)};
   }
   if(fn==='athletics_plan_class_relay'){
@@ -322,6 +323,16 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   await page.click('#attendanceStepBtn');await page.locator('[data-present="new-late"]').check();await page.click('#saveAttendance');await page.waitForFunction(()=>!document.getElementById('app').inert);
   assert.equal(await page.evaluate(()=>{const sid=testState.sessions.at(-1).id;return Math.max(...testState.heats.filter(h=>h.session_id===sid).map(h=>h.round_no))}),2);
   assert.equal(await page.evaluate(()=>{const sid=testState.sessions.at(-1).id;return testState.entries.filter(e=>e.session_id===sid&&e.round_no===2&&e.athlete_id==='new-late').length}),1);
+  // 800 m is open: more than eight runners together, no lane controls or assignments.
+  await page.click('#sessionsBack');await page.click('[data-discipline="track"]');await page.click('[data-event="track800"]');await page.locator('#quickYears input[value="Y8"]').check();await page.click('#quickStart');await page.click('#selectPresent');await page.click('#saveAttendance');await page.waitForFunction(()=>!document.getElementById('app').inert);
+  assert.equal(await page.locator('#trackCapacity').isVisible(),false);assert.equal(await page.locator('#trackLanes').isVisible(),false);assert.ok((await page.locator('#seriesPreview').textContent()).includes('Open start'));
+  await createRound(page);assert.equal(await page.locator('.series-tile').count(),1);assert.equal(await page.locator('.heat-runner').count(),18);assert.equal(await page.evaluate(()=>{const sid=testState.sessions.at(-1).id;return testState.entries.filter(e=>e.session_id===sid).every(e=>e.lane===null)}),true);
+  await page.locator('.series-tile').first().click();assert.equal((await page.locator('#heatList').textContent()).includes('Lane '),false);
+  const openHeat=await page.locator('.photo-link').first().getAttribute('data-class-heat');await page.evaluate(h=>{localStorage.setItem('test-fixture-athletes',JSON.stringify(window.testAthletes));const en=testState.entries.find(e=>e.heat_id===h);localStorage.setItem('ff-photo-pending-v1:class-heat:'+h,JSON.stringify({savedAt:Date.now(),assignments:[[en.id,166.789]]}))},openHeat);
+  await page.locator('.photo-link').first().click();const openPhoto=page.frameLocator('#classPhotoFrame');await openPhoto.locator('#saveResultsBtn').waitFor({state:'visible'});assert.ok((await openPhoto.locator('.laneNo').allTextContents()).every(t=>t.startsWith('Runner ')));
+  await openPhoto.locator('#saveResultsBtn').click();await openPhoto.locator('#mode').filter({hasText:'RESULTS SAVED'}).waitFor();await openPhoto.locator('#backBtn').click();await page.locator('#classPhotoDialog').waitFor({state:'hidden'});await page.waitForFunction(()=>!document.getElementById('app').inert);
+  assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),166.789);await page.screenshot({path:previewRoot+'/class-open800-'+viewport.width+'.png',fullPage:true});
+  await seriesList(page);await page.click('#nextTrackRound');await page.waitForFunction(()=>!document.getElementById('app').inert);assert.equal(await page.locator('.series-tile').count(),1);assert.equal(await page.locator('.heat-runner').count(),18);assert.equal(await page.evaluate(()=>testState.marks.at(-1).mark),166.789);
   assert.deepEqual(errors,[]);await page.close();
  }
  console.log('PASS desktop + mobile v3 multi-activity, selected repeaters, independent event attendance, combined gender/colour filters and departures, series editing, custom relay, conditions, audit and close/reopen, attendance, class Photo Finish round-trip, gender heats and relays: mixed class, save/retry, individual gender, repeated attempts, failed-save recovery, history, chart, ranking, responsive layout');

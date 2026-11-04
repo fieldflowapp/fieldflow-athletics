@@ -1,5 +1,14 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const L=require('../craighouse/logic.js');
+test('800 m is open and 400 m stays lane-based regardless of its mass-start metadata',()=>{
+ assert.equal(L.isOpenTrack({discipline:'track',name:'800 m',code:'800M'}),true);
+ assert.equal(L.isOpenTrack({discipline:'track',name:'800 metros'}),true);
+ assert.equal(L.isOpenTrack({discipline:'track',name:'400 m',start_mode:'mass_start'}),false);
+ const athletes=Array.from({length:40},(_,i)=>({id:String(i),gender:i<20?'F':'M'}));
+ const mixed=L.planOpenSeries(athletes);assert.equal(mixed.length,1);assert.equal(mixed[0].entries.length,40);assert.ok(mixed[0].entries.every(e=>e.lane===null));
+ const separated=L.planOpenSeries(athletes,'gender');assert.deepEqual(separated.map(h=>h.entries.length),[20,20]);assert.ok(separated.every(h=>h.entries.every(e=>athletes.find(a=>a.id===e.athlete_id).gender===h.gender)));
+ assert.throws(()=>L.planOpenSeries([{id:'a'},{id:'a'}]));
+});
 test('full series leave at least two in the last series when possible',()=>{
  for(const [count,sizes] of [[0,[]],[1,[1]],[8,[8]],[9,[7,2]],[10,[8,2]],[17,[8,7,2]],[18,[8,8,2]],[19,[8,8,3]],[24,[8,8,8]]])assert.deepEqual(L.seriesSizes(count,8),sizes);
 });

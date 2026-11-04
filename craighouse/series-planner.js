@@ -15,9 +15,12 @@ function restoreSeriesSettings(){
  $('heatMode').value=cfg?.mode||(S.session.gender==='All'?'mixed':'gender');
 }
 function seriesPreview(){
+ const open=L.isOpenTrack(eventForSession());
+ $('trackLanes').hidden=open;$('trackCapacity').closest('label').hidden=open;$('trackLaneSummary').hidden=open;
+ $('roundSetup').querySelector('summary').textContent=open?'Students for the next round':'Students & lanes for the next round';
  try{
-  const lanes=readLanes('trackLanes'),athletes=availableAthletes().filter(a=>S.roundSelection.has(a.id)),plan=L.planSeries(athletes,lanes,$('heatMode').value);
-  $('seriesPreview').textContent=plan.length?`${athletes.length} students · ${lanes.length} lanes · ${plan.length} series: `+plan.map(h=>`${h.gender==='All'?'Mixed':h.gender==='F'?'Female':'Male'} ${h.entries.length}`).join(' / '):'Select students for this round.';
+  const lanes=open?[]:readLanes('trackLanes'),athletes=availableAthletes().filter(a=>S.roundSelection.has(a.id)),plan=open?L.planOpenSeries(athletes,$('heatMode').value):L.planSeries(athletes,lanes,$('heatMode').value);
+  $('seriesPreview').textContent=plan.length?`${open?'Open start · ':''}${athletes.length} students · ${open?'no assigned lanes':lanes.length+' lanes'} · ${plan.length} series: `+plan.map(h=>`${h.gender==='All'?'Mixed':h.gender==='F'?'Female':'Male'} ${h.entries.length}`).join(' / '):'Select students for this round.';
   $('generateHeats').disabled=S.busy||!athletes.length;
  }catch(e){$('seriesPreview').textContent=e.message;$('generateHeats').disabled=true}
 }
