@@ -44,3 +44,12 @@ test('relay slots follow the event, including five runners and configurable Ingl
  for(const name of ['Relay 4x400 m','Relay 5x300 m','Relay Inglesa'])assert.equal(L.usesClock({name,discipline:'relay'}),true);
  for(const name of ['Hurdles 60 m','Hurdles 80 m'])assert.equal(L.usesClock({name,discipline:'track'}),false);
 });
+
+test('ranking merges sources and timing, selects one best per athlete, and preserves category and equipment groups',()=>{
+ const r={athlete_id:'a',event_name:'100 m',category:'Y7',gender:'F',unit:'s',status:'valid',source:'class',conditions:'Timing: manual',mark:14};
+ const rows=[r,{...r,source:'official',conditions:'Timing: photo_finish',mark:13},{...r,source:'external',mark:12.5},{...r,mark:10,status:'dq'},{...r,athlete_id:'b',mark:13.5},{...r,category:'Y8',mark:12}];
+ const best=L.bestMarks(rows,L.rankingKey);assert.equal(best.length,3);assert.equal(best[0].mark,12.5);assert.equal(best[0].source,'external');assert.equal(L.bestMarks(rows.filter(x=>x.source==='official'),L.rankingKey)[0].mark,13);
+ assert.equal(L.bestMarks(rows.filter(x=>x.source==='class'),L.rankingKey)[0].mark,14);
+ const field={...r,event_name:'Shot put',unit:'m',conditions:'Implement: 3 kg'};assert.equal(L.bestMarks([field,{...field,conditions:'Implement: 4 kg'}],L.rankingKey).length,2);
+ assert.equal(L.bestMarks(rows).length,4);
+});

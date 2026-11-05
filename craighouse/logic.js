@@ -8,7 +8,8 @@
  function formatTime(value){if(value==null||String(value).trim()==='')return '';const hundredths=Math.round(Number(value)*100);if(!Number.isFinite(hundredths)||hundredths<0)return '';return `${Math.floor(hundredths/6000)}:${String(Math.floor(hundredths/100)%60).padStart(2,'0')}.${String(hundredths%100).padStart(2,'0')}`}
  const comparisonKey=r=>JSON.stringify([r.event_name,r.category,r.gender,r.conditions||'']);
  const better=(a,b)=>a.unit==='s'?Number(a.mark)<Number(b.mark):Number(a.mark)>Number(b.mark);
- function bestMarks(rows){const map=new Map();for(const r of rows){if(r.status!=='valid'||r.mark==null||!Number.isFinite(Number(r.mark)))continue;const k=r.athlete_id+'|'+comparisonKey(r);if(!map.has(k)||better(r,map.get(k)))map.set(k,r)}return [...map.values()]}
+ const rankingKey=r=>JSON.stringify([r.event_name,r.category,r.gender,r.unit,r.unit==='s'?'':r.conditions||'']);
+ function bestMarks(rows,key=comparisonKey){const map=new Map();for(const r of rows){if(r.status!=='valid'||r.mark==null||!Number.isFinite(Number(r.mark)))continue;const k=r.athlete_id+'|'+key(r);if(!map.has(k)||better(r,map.get(k)))map.set(k,r)}return [...map.values()]}
  const isHighJump=e=>e?.code==='HJ'||/^high jump$|^salto alto$/i.test(e?.name||'');
  function highJumpState(heights,trials={}){let best=null,eliminatedAt=null;for(const h of heights){const a=trials[h.id]||['','',''];if(a.includes('O'))best=Math.max(best||0,Number(h.height_m));if(eliminatedAt==null&&a.every(x=>x==='X'))eliminatedAt=h.sequence_no}return {best,eliminatedAt}}
  function highJumpEdit(trials,heightId,index,value){const next=JSON.parse(JSON.stringify(trials));const a=[...(next[heightId]||['','',''])];if(!['','O','X','-'].includes(value)||index<0||index>2||value==='-'&&index!==0)throw Error('Invalid high jump attempt.');if(index>0&&a[index-1]!=='X')throw Error('Record the previous miss first.');if(a[index]===value)return next;a[index]=value;for(let i=index+1;i<3;i++)a[i]='';next[heightId]=a;return next}
@@ -35,6 +36,6 @@
   if(new Set(athletes.map(a=>a.id)).size!==athletes.length)throw Error('A participant can run only once per round.');
   return (mode==='mixed'?['All']:['F','M']).map(g=>({gender:g,entries:athletes.filter(a=>g==='All'||a.gender===g).map(a=>({athlete_id:a.id,lane:null}))})).filter(h=>h.entries.length).map((h,i)=>({...h,heat_number:i+1}));
  }
- const api={isOpenTrack,planOpenSeries,selectedLanes,seriesSizes,planSeries,relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,better,bestMarks};
+ const api={isOpenTrack,planOpenSeries,selectedLanes,seriesSizes,planSeries,relaySize,isHighJump,highJumpState,highJumpEdit,eligible,attendanceMatches,parseMark,parseTime,formatTime,usesClock,comparisonKey,rankingKey,better,bestMarks};
  if(typeof module!=='undefined')module.exports=api;else root.ClassLogic=api;
 })(typeof window!=='undefined'?window:globalThis);
