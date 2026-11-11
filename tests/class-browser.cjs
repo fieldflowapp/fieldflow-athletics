@@ -108,6 +108,16 @@ const mock=()=>{
    for(const gender of p.p_mode==='gender'?['F','M']:[s.gender]){const group=present.filter(a=>gender==='All'||a.gender===gender);if(!group.length)continue;const count=p.p_heat_count||Math.ceil(group.length/p.p_capacity);for(let i=0;i<count;i++){const h={id:next('heat'),session_id:s.id,round_no:round,heat_number:++number,gender,status:'scheduled'};heats.push(h);created.push(h);group.filter((a,j)=>j%count===i).forEach((a,j)=>entries.push({id:next('entry'),heat_id:h.id,session_id:s.id,round_no:round,athlete_id:a.id,lane:j+1}))}}
    persist();return {data:structuredClone(created)};
   }
+  if(fn==='athletics_seed_class_round'){
+   const round=p.p_source_round+1,session=sessions.find(s=>s.id===p.p_session_id),created=[];
+   roundSettings.push({session_id:session.id,round_no:round,kind:'track',mode:'mixed',lanes:p.p_lanes,stage:p.p_stage});
+   for(const number of new Set(p.p_entries.map(e=>e.series))){
+    const h={id:next('heat'),session_id:session.id,round_no:round,heat_number:number,gender:session.gender,status:'scheduled'};
+    heats.push(h);created.push(h);
+    for(const e of p.p_entries.filter(e=>e.series===number))entries.push({id:next('entry'),heat_id:h.id,session_id:session.id,round_no:round,athlete_id:e.athlete_id,lane:e.lane});
+   }
+   persist();return {data:structuredClone(created)};
+  }
   if(fn==='athletics_save_class_heat'){
    const h=heats.find(h=>h.id===p.p_heat_id);saveMarks(h.session_id,h.round_no,p.p_results.map(r=>({athlete_id:entries.find(e=>e.id===r.id).athlete_id,mark:r.official_time,status:r.status==='finished'?'valid':r.status,notes:r.notes||'',timing_method:r.timing_method||'manual'})));h.status=p.p_complete?'completed':'scheduled';persist();return {data:sheet().filter(r=>r.heat_id===h.id)};
   }
@@ -209,6 +219,20 @@ async function eventOptions(page){await seriesList(page);if(await page.locator('
   assert.equal(await page.locator('[data-round-athlete="girl"]').count(),0);assert.equal(await page.locator('[data-round-athlete="absent"]').count(),1);await createRound(page);await page.waitForFunction(()=>document.getElementById('roundPicker').value==='4');assert.equal(await page.evaluate(()=>{const e=testState.entries.find(e=>e.athlete_id==='absent'&&e.round_no===4);return testState.heats.find(h=>h.id===e.heat_id).heat_number}),2);
   assert.equal(await page.evaluate(id=>testState.attendance.find(a=>a.session_id===id&&a.athlete_id==='girl').present,trackRoot),true);
   await page.click('#attendanceStepBtn');await page.locator('[data-present="girl"]').check();await page.click('#saveAttendance');
+  await page.waitForFunction(()=>!document.getElementById('app').inert);
+  await page.evaluate(id=>{
+   const round=Math.max(...testState.heats.filter(h=>h.session_id===id).map(h=>h.round_no));
+   testState.heats.filter(h=>h.session_id===id&&h.round_no===round).forEach(h=>h.status='completed');
+   testState.entries.filter(e=>e.session_id===id&&e.round_no===round).forEach((e,i)=>testState.marks.push({id:'seed-time-'+i,session_id:id,athlete_id:e.athlete_id,attempt_no:round,mark:12+i,status:'valid'}));
+  },trackRoot);
+  await page.click('#refreshSeries');await page.waitForFunction(()=>!document.getElementById('app').inert);
+  await page.click('#summaryStepBtn');await page.locator('#seededRoundControl summary').click();
+  await page.locator('#seededLanes input[value="4"]').check();
+  await page.locator('#seededLanes input[value="1"]').uncheck();
+  assert.match(await page.locator('#seededPreview').textContent(),/Lane 4/);
+  await page.click('#saveSeededRound');
+  await page.waitForFunction(()=>document.getElementById('roundPicker').selectedOptions[0]?.textContent==='Final 5');
+  assert.equal(await page.locator('#heatList .heat-runner').count(),1);
   // Each new activity starts with a blank attendance checklist.
   await eventOptions(page);await page.locator('#activityControls details').first().locator('summary').click();await page.selectOption('#addEvent','event');await page.click('#addActivity');await page.locator('#attendancePane').waitFor({state:'visible'});
   assert.equal(await page.locator('#attendanceList input:checked').count(),0);assert.equal(await page.locator('#sheetControls').isVisible(),false);

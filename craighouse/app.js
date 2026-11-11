@@ -104,7 +104,7 @@ async function saveMarks(){await run(async()=>{
 })}
 function renderHeats(){
  renderRoundParticipants();const established=S.heats.length>0;$('generateHeats').textContent=established?'Create next round':'Create series';$('nextTrackRound').hidden=!established;seriesPreview();
- const rounds=[...new Set(S.heats.map(h=>h.round_no))];if(!rounds.includes(S.round))S.round=rounds.at(-1)||1;$('roundPicker').innerHTML=rounds.map(r=>option(r,'Round '+r)).join('');$('roundPicker').value=S.round;
+ const rounds=[...new Set(S.heats.map(h=>h.round_no))];if(!rounds.includes(S.round))S.round=rounds.at(-1)||1;$('roundPicker').innerHTML=rounds.map(r=>option(r,({final:'Final',second:'Second stage'}[S.roundSettings.find(x=>x.round_no===r)?.stage]||'Round')+' '+r)).join('');$('roundPicker').value=S.round;
  $('heatList').innerHTML=S.heats.filter(h=>h.round_no===S.round).map(h=>{
  const entries=S.series.filter(x=>x.heat_id===h.id).sort((a,b)=>a.lane-b.lane);
  const back='../craighouse/?session='+encodeURIComponent(S.session.id)+'&round='+h.round_no+'&focusHeat='+encodeURIComponent(h.id)+'#class';const href='../photo-finish/?classHeat='+encodeURIComponent(h.id)+'&return='+encodeURIComponent(back);
